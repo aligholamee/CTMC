@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cuda_runtime.h>
 
+
 #define funcCheck(stmt) do { cudaError_t err = stmt; if (err != cudaSuccess) { printf("[ERROR] Failed to run stmt %d, error body: %s\n", __LINE__, cudaGetErrorString(err)); return -1; } } while (0)
 
 using namespace std;
@@ -27,6 +28,7 @@ int main(int argc,		// Number of arguments in array argv
 
 
 		// Call match function
+
 		// templateMatchSetup(h_imageMat, h_templateMat);
 
 	}
@@ -54,11 +56,14 @@ int templateMatchSetup(int *h_imageMat, int *h_templateMat)
 	funcCheck(cudaMemcpy(h_imageMat, d_imageMat, imageMatSize, cudaMemcpyHostToDevice));
 	funcCheck(cudaMemcpy(h_templateMat, d_templateMat, templateMatSize, cudaMemcpyHostToDevice));
 
+	
 
 
 
 
-
+	// Release space on device
+	funcCheck(cudaFree(d_imageMat));
+	funcCheck(cudaFree(d_templateMat));
 
 	return EXIT_SUCCESS;
 }
