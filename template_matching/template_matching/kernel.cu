@@ -6,7 +6,8 @@
 
 using namespace std;
 
-void extract_image_matrix(bitmap_image imageBmp, size_t *imageMatrix, size_t width, size_t height);
+void extract_rgb_image_matrix(size_t *imageMatrix, bitmap_image imageBmp, size_t width, size_t height);
+void rgb_to_grayscale(size_t* grayScaled, size_t *imageMatrix, size_t width, size_t height);
 void print_image_pixels(size_t* imageMatrix, size_t width, size_t height);
 
 int main()
@@ -25,22 +26,18 @@ int main()
 
 	size_t *mainMatrix = new size_t[3 * total_num_of_pixels_main];
 
-	for (size_t row = 0; row < mainHeight; row++) {
-		for (size_t col = 0; col < mainWidth; col++) {
-			cout << "red: " << int(mainImageBmp.get_pixel(row, col).red);
-			cout << "green: " << int(mainImageBmp.get_pixel(row, col).green);
-			cout << "blue: " << int(mainImageBmp.get_pixel(row, col).blue);
-		}
-		cout << endl;
-	}
-	//extract_image_matrix(mainImageBmp, mainMatrix, mainWidth, mainHeight);
-	//print_image_pixels(mainMatrix, mainWidth, mainHeight);
+	extract_rgb_image_matrix(mainMatrix, mainImageBmp, mainWidth, mainHeight);
+
+	size_t *grayScaled = new size_t[total_num_of_pixels_main];
+	rgb_to_grayscale(grayScaled, mainMatrix, mainWidth, mainHeight);
+
+	print_image_pixels(grayScaled, mainWidth, mainHeight);
 
 	system("pause");
 	return 0;
 }
 
-void extract_image_matrix(bitmap_image imageBmp, size_t *imageMatrix, size_t width, size_t height)
+void extract_rgb_image_matrix(size_t *imageMatrix, bitmap_image imageBmp, size_t width, size_t height)
 {
 	for (size_t row = 0; row < height; row++) {
 		for (size_t col = 0; col < width; col++) {
@@ -55,11 +52,25 @@ void extract_image_matrix(bitmap_image imageBmp, size_t *imageMatrix, size_t wid
 	}
 }
 
+void rgb_to_grayscale(size_t* grayScaled, size_t *imageMatrix, size_t width, size_t height)
+{
+	for (size_t row = 0; row < height; row++) {
+		for (size_t col = 0; col < width; col++) {
+			int r_offset = row * width * 3 + col * 3;
+			int g_offset = r_offset + 1;
+			int b_offset = r_offset + 2;
+
+			int grayScaledPixel = (int)(0.299 * (float)imageMatrix[r_offset] + 0.587 * (float)imageMatrix[g_offset] + 0.114 * (float)imageMatrix[b_offset]);
+			grayScaled[row * width + col] = grayScaledPixel;
+		}
+	}
+}
+
 void print_image_pixels(size_t* imageMatrix, size_t width, size_t height)
 {
 	for (size_t row = 0; row < height; row++) {
 		for (size_t col = 0; col < width; col++)
-			cout << imageMatrix[row * (width * 3) + col*3] << " ";
+			cout << imageMatrix[row * width + col] << " ";
 		cout << endl;
 	}
 }
