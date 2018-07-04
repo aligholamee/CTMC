@@ -4,7 +4,9 @@
 #include <math.h>
 #include <iostream>
 
+#define funcCheck(stmt) do { cudaError_t err = stmt; if (err != cudaSuccess) { printf("[ERROR] Failed to run stmt %d, error body: %s\n", __LINE__, cudaGetErrorString(err)); return -1; } } while (0)
 #define M_PI 3.14159265
+
 using namespace std;
 
 struct BITMAP {
@@ -15,19 +17,31 @@ struct BITMAP {
 	int size;
 };
 
-BITMAP read_bitmap_image(string file_name);
-BITMAP rotate_bitmap_image(BITMAP image, double degree);
-void save_bitmap_image(string file_name, BITMAP image);
+int initiate_template_matching(BITMAP, BITMAP);
+BITMAP read_bitmap_image(string);
+BITMAP rotate_bitmap_image(BITMAP, double);
+void save_bitmap_image(string, BITMAP);
 
 int main()
 {
-	BITMAP mainImage = read_bitmap_image("collection_coin.bmp");
-	mainImage = rotate_bitmap_image(mainImage, 270);
-	save_bitmap_image("rotatedBitMap.bmp", mainImage);
+	BITMAP mainImage = read_bitmap_image("collection.bmp");
+	BITMAP templateImage = read_bitmap_image("collection_coin.bmp");
+
+	initiate_template_matching(mainImage, templateImage);
 
 	system("pause");
 	return 0;
 }
+
+int	initiate_template_matching(BITMAP mainImage, BITMAP templateImage)
+{
+	unsigned char * d_MainImage;
+	unsigned char * d_TemplateImage;
+
+
+	return EXIT_SUCCESS;
+}
+
 
 BITMAP read_bitmap_image(string file_name)
 {
@@ -87,7 +101,7 @@ BITMAP rotate_bitmap_image(BITMAP image, double degree)
 }
 
 void save_bitmap_image(string file_name, BITMAP image)
-{
+{ 
 	string file_path = "Output Files/" + file_name;
 	FILE *out = fopen(file_path.c_str(), "wb");
 	fwrite(image.header, sizeof(unsigned char), 54, out);
