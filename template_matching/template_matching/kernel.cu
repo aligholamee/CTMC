@@ -4,7 +4,8 @@
 #include <math.h>
 #include <iostream>
 
-#define funcCheck(stmt) do { cudaError_t err = stmt; if (err != cudaSuccess) { printf("[ERROR] Failed to run stmt %d, error body: %s\n", __LINE__, cudaGetErrorString(err)); return -1; } } while (0)
+#define errorHandler(stmt) do { cudaError_t err = stmt; if (err != cudaSuccess) { printf("[ERROR] Failed to run stmt %d, error body: %s\n", __LINE__, cudaGetErrorString(err)); return -1; } } while (0)
+
 #define M_PI 3.14159265
 
 using namespace std;
@@ -38,6 +39,10 @@ int	initiate_template_matching(BITMAP mainImage, BITMAP templateImage)
 	unsigned char * d_MainImage;
 	unsigned char * d_TemplateImage;
 
+	errorHandler(cudaMalloc((void **)&mainImage.pixels, mainImage.size * sizeof(unsigned char)));
+	errorHandler(cudaMalloc((void **)&templateImage.pixels, templateImage.size * sizeof(unsigned char)));
+	errorHandler(cudaMemcpy(d_MainImage, mainImage.pixels, mainImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
+	errorHandler(cudaMemcpy(d_TemplateImage, templateImage.pixels, templateImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 
 	return EXIT_SUCCESS;
 }
