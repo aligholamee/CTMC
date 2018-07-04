@@ -46,11 +46,27 @@ int	initiate_template_matching(BITMAP mainImage, BITMAP templateImage)
 {
 	unsigned char * d_MainImage;
 	unsigned char * d_TemplateImage;
+	cudaEvent_t start;
+	cudaEvent_t stop;
+	float elapsed_time = 0.0f;
 
 	errorHandler(cudaMalloc((void **)&mainImage.pixels, mainImage.size * sizeof(unsigned char)));
 	errorHandler(cudaMalloc((void **)&templateImage.pixels, templateImage.size * sizeof(unsigned char)));
 	errorHandler(cudaMemcpy(d_MainImage, mainImage.pixels, mainImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaMemcpy(d_TemplateImage, templateImage.pixels, templateImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
+	errorHandler(cudaEventCreate(&start));
+	errorHandler(cudaEventCreate(&stop));
+	errorHandler(cudaEventRecord(start));
+	
+	//
+
+	errorHandler(cudaGetLastError());
+	errorHandler(cudaEventRecord(stop, NULL));
+	errorHandler(cudaEventSynchronize(stop));
+	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
+	wcout << "Elapsed time in msec = " << elapsed_time << endl;
+	errorHandler(cudaFree(d_MainImage));
+	errorHandler(cudaFree(d_TemplateImage));
 
 	return EXIT_SUCCESS;
 }
