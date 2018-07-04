@@ -4,7 +4,13 @@
 #include <math.h>
 #include <iostream>
 
-#define errorHandler(stmt) do { cudaError_t err = stmt; if (err != cudaSuccess) { printf("[ERROR] Failed to run stmt %d, error body: %s\n", __LINE__, cudaGetErrorString(err)); return -1; } } while (0)
+#define errorHandler(stmt)																					\
+	do {																									\
+		cudaError_t err = stmt;																				\
+		if (err != cudaSuccess) {																			\
+			printf("[ERROR] Failed to run stmt %d, error body: %s\n", __LINE__, cudaGetErrorString(err));	\
+			return -1; }																					\
+	} while (0)																								\
 
 #define M_PI 3.14159265
 
@@ -22,14 +28,16 @@ int initiate_template_matching(BITMAP, BITMAP);
 BITMAP read_bitmap_image(string);
 BITMAP rotate_bitmap_image(BITMAP, double);
 void save_bitmap_image(string, BITMAP);
+void device_query();
 
 int main()
 {
 	BITMAP mainImage = read_bitmap_image("collection.bmp");
 	BITMAP templateImage = read_bitmap_image("collection_coin.bmp");
 
-	initiate_template_matching(mainImage, templateImage);
+	// initiate_template_matching(mainImage, templateImage);
 
+	device_query();
 	system("pause");
 	return 0;
 }
@@ -149,6 +157,8 @@ void device_query()
 		wcout << "  Threads per block: " << props.maxThreadsPerBlock << endl;
 		wcout << "  Max block dimensions: [ " << props.maxThreadsDim[0] << ", " << props.maxThreadsDim[1] << ", " << props.maxThreadsDim[2] << " ]" << endl;
 		wcout << "  Max grid dimensions:  [ " << props.maxGridSize[0] << ", " << props.maxGridSize[1] << ", " << props.maxGridSize[2] << " ]" << endl;
+		wcout << "  Concurrent Kernels:		" << props.concurrentKernels;
+
 		wcout << endl;
 	}
 }
