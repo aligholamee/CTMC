@@ -34,32 +34,31 @@ void device_query();
 *	CUDA Kernel to compute MSEs
 */
 __global__ void
-computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char* kernel, int image_width, int image_height, int kernel_width, int kernel_height)
+computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char* kernel, int kernelMSESize, int image_width, int image_height, int kernel_width, int kernel_height)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 	int stride = 1;
+	int virtualKernelMSE = 0;
 
 	int virtual_kernel_col_start = row;
 	int virtual_kernel_col_end = virtual_kernel_col_start + kernel_width;
 	int virtual_kernel_row_start = col * stride;
 	int virtual_kernel_row_end = virtual_kernel_row_start + kernel_height;
 
-
 	if (virtual_kernel_col_end < image_width && virtual_kernel_row_end < image_height) {
-		if (((col >= virtual_kernel_col_start) && (col < virtual_kernel_col_end))
-			&&
-			((row >= virtual_kernel_row_start) && (row < virtual_kernel_row_end))) {
-
-			int MSE_INSIDE_KERNEL = 0;
-			
-			int inside_kernel_row = row % virtual_kernel_col_start;
-			int inside_kernel_col = col % virtual_kernel_row_start;
-
-			// Need to be done in an atomic way (race exists)
-
-			MSE_INSIDE_KERNEL += image[row * image_width + col] - kernel[inside_kernel_row * kernel_width + inside_kernel_col];
+		for (int kernelRow = 0; kernelRow < kernel_height; kernelRow++) {
+			for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
+				int imageRow = virtual_kernel_row_start + kernelRow;
+				int imageCol = virtual_kernel_col_start + kernelCol;
+				virtualKernelMSE += image[imageRow * image_width + imageCol] - kernel[kernelRow * kernel_width + kernelCol];
+			}
 		}
+	}
+	
+	int myIndexInKernelMSEsArray = row * image_width + col;
+	if (myIndexInKernelMSEsArray < kernelMSESize) {
+		kernelMSEs[myIndexInKernelMSEsArray] = virtualKernelMSE;
 	}
 }
 
