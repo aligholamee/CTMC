@@ -34,7 +34,7 @@ void device_query();
 *	CUDA Kernel to compute MSEs
 */
 __global__ void
-computeMSEKernel(unsigned char* image, unsigned char* kernel, int image_width, int image_height, int kernel_width, int kernel_height)
+computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char* kernel, int image_width, int image_height, int kernel_width, int kernel_height)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -57,6 +57,7 @@ computeMSEKernel(unsigned char* image, unsigned char* kernel, int image_width, i
 			int inside_kernel_col = col % virtual_kernel_row_start;
 
 			// Need to be done in an atomic way (race exists)
+
 			MSE_INSIDE_KERNEL += image[row * image_width + col] - kernel[inside_kernel_row * kernel_width + inside_kernel_col];
 		}
 	}
@@ -76,14 +77,18 @@ int main()
 
 int	initiate_template_matching(BITMAP mainImage, BITMAP templateImage)
 {
-	unsigned char * d_MainImage;
-	unsigned char * d_TemplateImage;
+	unsigned char* d_MainImage;
+	unsigned char* d_TemplateImage;
+	int height_difference = mainImage.height - templateImage.height;
+	int width_difference = mainImage.width - templateImage.width;
+	unsigned char* d_KernelMSEs;
 	cudaEvent_t start;
 	cudaEvent_t stop;
 	float elapsed_time = 0.0f;
 
-	errorHandler(cudaMalloc((void **)&mainImage.pixels, mainImage.size * sizeof(unsigned char)));
-	errorHandler(cudaMalloc((void **)&templateImage.pixels, templateImage.size * sizeof(unsigned char)));
+	errorHandler(cudaMalloc((void **)&d_MainImage, mainImage.size * sizeof(unsigned char)));
+	errorHandler(cudaMalloc((void **)&d_TemplateImage, templateImage.size * sizeof(unsigned char)));
+	errorHandler(cudaMalloc((void **)&d_KernelMSEs, (height_difference + 1) * (width_difference + 1)));
 	errorHandler(cudaMemcpy(d_MainImage, mainImage.pixels, mainImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaMemcpy(d_TemplateImage, templateImage.pixels, templateImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaEventCreate(&start));
