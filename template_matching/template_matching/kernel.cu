@@ -52,7 +52,12 @@ computeMSEKernel(unsigned char* image, unsigned char* kernel, int image_width, i
 			((row >= virtual_kernel_row_start) && (row < virtual_kernel_row_end))) {
 
 			int MSE_INSIDE_KERNEL = 0;
-			// MSE_INSIDE_KERNEL = image[row * image_width + col] - kernl
+			
+			int inside_kernel_row = row % virtual_kernel_col_start;
+			int inside_kernel_col = col % virtual_kernel_row_start;
+
+			// Need to be done in an atomic way (race exists)
+			MSE_INSIDE_KERNEL += image[row * image_width + col] - kernel[inside_kernel_row * kernel_width + inside_kernel_col];
 		}
 	}
 }
