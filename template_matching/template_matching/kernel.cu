@@ -26,7 +26,8 @@ struct BITMAP {
 	int size;
 };
 
-int initiate_template_matching(BITMAP, BITMAP);
+int initiate_parallel_template_matching(BITMAP, BITMAP);
+void serial_template_matching(BITMAP, BITMAP);
 BITMAP read_bitmap_image(string);
 BITMAP rotate_bitmap_image(BITMAP, double);
 void save_bitmap_image(string, BITMAP);
@@ -73,14 +74,14 @@ int main()
 	BITMAP mainImage = read_bitmap_image("collection.bmp");
 	BITMAP templateImage = read_bitmap_image("collection_coin.bmp");
 
-	initiate_template_matching(mainImage, templateImage);
-
+	// initiate_parallel_template_matching(mainImage, templateImage);
+	serial_template_matching(mainImage, templateImage);
 	// device_query();
 	system("pause");
 	return 0;
 }
 
-int	initiate_template_matching(BITMAP mainImage, BITMAP templateImage)
+int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 {
 	unsigned char* d_MainImage;
 	unsigned char* d_TemplateImage;
@@ -113,13 +114,38 @@ int	initiate_template_matching(BITMAP mainImage, BITMAP templateImage)
 	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
 	wcout << "Elapsed time in msec = " << elapsed_time << endl;
 	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size, cudaMemcpyDeviceToHost));
-	//
-
-	wcout << "Number of occurances = " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size) << endl;
 	errorHandler(cudaFree(d_MainImage));
 	errorHandler(cudaFree(d_TemplateImage));
 
 	return EXIT_SUCCESS;
+}
+
+void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
+{
+	int height_difference = mainImage.height - templateImage.height;
+	int width_difference = mainImage.width - templateImage.width;
+	int MSE_size = (height_difference + 1) * (width_difference + 1);
+	unsigned char * mseArray = new unsigned char[MSE_size];
+
+	for (int row = 0; row < mainImage.width; row++) {
+		for (int col = 0; col < mainImage.height; col++) {
+			if (row + templateImage.height < mainImage.height && col + templateImage.width < mainImage.width) {
+				for (int i = 0; i < templateImage.height; i++) {
+					for (int j = 0; j < templateImage.width; j++) {
+						int vRow = row + i;
+						int vCol = col + j;
+						int indexInsideMSEArray = row * mainImage.width + col;
+
+						if (indexInsideMSEArray < MSE_size)
+							mseArray[indexInsideMSEArray] = mainImage.pixels[vRow * mainImage.width + vCol] - templateImage.pixels[i * templateImage.width + j];
+					}
+				}
+			}
+		}
+	}
+
+
+	wcout << "[Serial Computation Completed] Number of occurances: " << get_num_of_occurances_in_serial(mseArray, MSE_size);
 }
 
 BITMAP read_bitmap_image(string file_name)
