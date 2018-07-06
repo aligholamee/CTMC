@@ -15,6 +15,7 @@
 #define M_PI 3.14159265
 #define BLOCK_SIZE_X 32
 #define BLOCK_SIZE_Y 32
+#define BLOCK_SIZE 1024
 
 using namespace std;
 
@@ -34,7 +35,7 @@ void save_bitmap_image(string, BITMAP);
 void device_query();
 void print_array(unsigned char *, unsigned int);
 float find_minimum_in_array_in_serial(float*, unsigned int);
-int get_num_of_occurances_in_serial(float*, unsigned int);
+int get_num_of_occurances_in_serial(float*, unsigned int, float, bool);
 
 
 /*
@@ -70,14 +71,60 @@ computeMSEKernel(float* kernelMSEs, unsigned char* image, unsigned char* kernel,
 	}
 }
 
+
+/*
+*	CUDA Kernel to compute the minimum number in an array
+*/
+__global__ void
+findMinInArrayKernel(float* kernelMSEs, int kernelMSESize, float *min_MSE, int * mutex)
+{
+	unsigned int tId = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int stride = gridDim.x * blockDim.x;
+	unsigned int offset = 0;
+
+	__shared__ float cache[BLOCK_SIZE];
+
+	float temp = 0.0;
+	while (tId + offset < kernelMSESize) {
+		temp = fminf(temp, kernelMSEs[tId + offset]);
+		offset += stride;
+	}
+
+	cache[threadIdx.x] = temp;
+
+	__syncthreads();
+
+	unsigned int i = blockDim.x / 2;
+	while (i != 0) {
+		if (threadIdx.x < i) {
+			cache[threadIdx.x] = fminf(cache[threadIdx.x], cache[threadIdx.x + i]);
+		}
+
+		__syncthreads();
+		i /= 2;
+	}
+
+	// Update global min for each block
+	if (threadIdx.x == 0) {
+
+		// Lock
+		while (atomicCAS(mutex, 0, 1) != 0);
+
+		*min_MSE = fminf(*min_MSE, cache[0]);
+
+		// Unlock
+		atomicExch(mutex, 0);
+	}
+}
+
 int main()
 {
 	BITMAP mainImage = read_bitmap_image("coin_col.bmp");
 	BITMAP templateImage = read_bitmap_image("coin.bmp");
 
-	templateImage = rotate_bitmap_image(templateImage, 270);
+	// templateImage = rotate_bitmap_image(templateImage, 270);
 	initiate_parallel_template_matching(mainImage, templateImage);
-	// serial_template_matching(mainImage, templateImage);
+	serial_template_matching(mainImage, templateImage);
 	// device_query();
 	system("pause");
 	return 0;
@@ -92,6 +139,9 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	int kernel_MSE_size = (height_difference + 1) * (width_difference + 1);
 	float* d_KernelMSEs;
 	float* h_KernelMSEs;
+	float* d_Min_MSE;
+	float* h_Min_MSE;
+	int* d_mutex;
 	cudaEvent_t start;
 	cudaEvent_t stop;
 	float elapsed_time = 0.0f;
@@ -99,7 +149,12 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	errorHandler(cudaMalloc((void **)&d_MainImage, mainImage.size * sizeof(unsigned char)));
 	errorHandler(cudaMalloc((void **)&d_TemplateImage, templateImage.size * sizeof(unsigned char)));
 	errorHandler(cudaMalloc((void **)&d_KernelMSEs, kernel_MSE_size* sizeof(float)));
+	errorHandler(cudaMalloc((void **)&d_Min_MSE, sizeof(float)));
+	errorHandler(cudaMalloc((void **)&d_mutex, sizeof(int)));
+	errorHandler(cudaMemset(d_Min_MSE, 0, sizeof(float)));
+	errorHandler(cudaMemset(d_mutex, 0, sizeof(int)));
 	h_KernelMSEs = new float[kernel_MSE_size];
+	h_Min_MSE = new float[1];
 	errorHandler(cudaMemcpy(d_MainImage, mainImage.pixels, mainImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaMemcpy(d_TemplateImage, templateImage.pixels, templateImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaEventCreate(&start));
@@ -110,17 +165,22 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	dim3 block_dimensions(BLOCK_SIZE_X, BLOCK_SIZE_Y, 1);
 	computeMSEKernel << <grid_dimensions, block_dimensions >> > (d_KernelMSEs, d_MainImage, d_TemplateImage, kernel_MSE_size, mainImage.width, mainImage.height, templateImage.width, templateImage.height);
 
+	dim3 grid_dimensions_2(ceil((float)kernel_MSE_size) / BLOCK_SIZE, 1, 1);
+	dim3 block_dimensions_2(BLOCK_SIZE, 1, 1);
+	findMinInArrayKernel << <grid_dimensions_2, block_dimensions_2 >> > (d_KernelMSEs, kernel_MSE_size, d_Min_MSE, d_mutex);
+
 	errorHandler(cudaGetLastError());
 	errorHandler(cudaEventRecord(stop, NULL));
 	errorHandler(cudaEventSynchronize(stop));
 	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
-	wcout << "Elapsed time in msec = " << elapsed_time << endl;
 	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size * sizeof(float), cudaMemcpyDeviceToHost));
+	errorHandler(cudaMemcpy(h_Min_MSE, d_Min_MSE, sizeof(float), cudaMemcpyDeviceToHost));
 	wcout << "[[[ Parallel Computation Results ]]] " << endl;
+	wcout << "Elapsed time in msec = " << elapsed_time << endl;
 	wcout << "[Main Image Dimensions]: " << mainImage.height << "*" << mainImage.width << endl;
 	wcout << "[Template Image Dimensions]: " << templateImage.height << "*" << templateImage.width << endl;
 	wcout << "[MSE Array Size]:	" << kernel_MSE_size << endl;
-	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size) << endl;
+	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size, *h_Min_MSE, false) << endl;
 	errorHandler(cudaFree(d_MainImage));
 	errorHandler(cudaFree(d_TemplateImage));
 
@@ -156,7 +216,7 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 	wcout << "[Main Image Dimensions]: " << mainImage.height << "*" << mainImage.width << endl;
 	wcout << "[Template Image Dimensions]: " << templateImage.height << "*" << templateImage.width << endl;
 	wcout << "[MSE Array Size]:	" << MSE_size << endl;
-	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(mseArray, MSE_size) << endl;
+	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(mseArray, MSE_size, 0, true) << endl;
 }
 
 BITMAP read_bitmap_image(string file_name)
@@ -286,9 +346,17 @@ float find_minimum_in_array_in_serial(float* arr, unsigned int arr_size)
 	return minimum;
 }
 
-int get_num_of_occurances_in_serial(float* arr, unsigned int arr_size)
+int get_num_of_occurances_in_serial(float* arr, unsigned int arr_size, float min_value, bool find_min_value)
 {
-	float occurance = find_minimum_in_array_in_serial(arr, arr_size);
+	float occurance;
+	
+	if (!find_min_value) {
+		occurance = min_value;
+	}
+	else {
+		occurance = find_minimum_in_array_in_serial(arr, arr_size);
+	}
+
 	int num_of_occurances = 0;
 
 	for (int i = 0; i < arr_size; i++)
