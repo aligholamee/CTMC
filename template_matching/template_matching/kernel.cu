@@ -59,7 +59,13 @@ computeMSEKernel(float* kernelMSEs, unsigned char* image, unsigned char* kernel,
 			for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
 				int imageRow = virtual_kernel_row_start + kernelRow;
 				int imageCol = virtual_kernel_col_start + kernelCol;
-				float error = image[imageRow * image_width + imageCol] - kernel[kernelRow * kernel_width + kernelCol];
+				float m_r = float(image[(imageRow * image_width + imageCol) * 3] - '0');
+				float m_g = float(image[(imageRow * image_width + imageCol) * 3 + 1] - '0');
+				float m_b = float(image[(imageRow * image_width + imageCol) * 3 + 2] - '0');
+				float t_r = float(kernel[(kernelRow * kernel_width + kernelCol) * 3] - '0');
+				float t_g = float(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 1] - '0');
+				float t_b = float(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 2] - '0');
+				float error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
 				virtualKernelMSE += error * error;
 			}
 		}
