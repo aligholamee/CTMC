@@ -33,8 +33,8 @@ BITMAP rotate_bitmap_image(BITMAP, double);
 void save_bitmap_image(string, BITMAP);
 void device_query();
 void print_array(unsigned char *, unsigned int);
-unsigned char find_minimum_in_array_in_serial(unsigned char *, unsigned int);
-int get_num_of_occurances_in_serial(unsigned char*, unsigned int);
+float find_minimum_in_array_in_serial(float*, unsigned int);
+int get_num_of_occurances_in_serial(float*, unsigned int);
 
 
 /*
@@ -72,7 +72,7 @@ computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char*
 int main()
 {
 	BITMAP mainImage = read_bitmap_image("collection.bmp");
-	BITMAP templateImage = read_bitmap_image("collection_coin.bmp");
+	BITMAP templateImage = read_bitmap_image("collection_item.bmp");
 
 	// initiate_parallel_template_matching(mainImage, templateImage);
 	serial_template_matching(mainImage, templateImage);
@@ -125,20 +125,19 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 	int height_difference = mainImage.height - templateImage.height;
 	int width_difference = mainImage.width - templateImage.width;
 	int MSE_size = (height_difference + 1) * (width_difference + 1);
-	unsigned char * mseArray = new unsigned char[MSE_size];
+	float * mseArray = new float[MSE_size];
 
 	for (int row = 0; row < mainImage.height; row++) {
 		for (int col = 0; col < mainImage.width; col++) {
 			if (row + templateImage.height < mainImage.height && col + templateImage.width < mainImage.width) {
-				for (int i = 0; i < templateImage.height; i++) {
-					for (int j = 0; j < templateImage.width; j++) {
-						int vRow = row + i;
-						int vCol = col + j;
-						int indexInsideMSEArray = row * mainImage.width + col;
-
-						if (indexInsideMSEArray < MSE_size) {
-							unsigned char error = mainImage.pixels[vRow * mainImage.width + vCol] - templateImage.pixels[i * templateImage.width + j];
-							mseArray[indexInsideMSEArray] = error * error;
+				int indexInsideMSEArray = row * mainImage.width + col;
+				if (indexInsideMSEArray < MSE_size) {
+					for (int i = 0; i < templateImage.height; i++) {
+						for (int j = 0; j < templateImage.width; j++) {
+							int vRow = row + i;
+							int vCol = col + j;
+							float error = float(mainImage.pixels[vRow * mainImage.width + vCol] - '0') - float(templateImage.pixels[i * templateImage.width + j] - '0');
+							mseArray[indexInsideMSEArray] += error * error;
 						}
 					}
 				}
@@ -268,19 +267,22 @@ void print_array(unsigned char* arr, unsigned int arr_size)
 	}
 }
 
-unsigned char find_minimum_in_array_in_serial(unsigned char * arr, unsigned int arr_size)
+float find_minimum_in_array_in_serial(float* arr, unsigned int arr_size)
 {
-	unsigned char minimum = arr[0];
-	for (int i = 0; i < arr_size; i++)
-		if (arr[i] < minimum)
+	float minimum = arr[0];
+	for (int i = 0; i < arr_size; i++) {
+		if (arr[i] < minimum && arr[i] != 0) {
 			minimum = arr[i];
+		}
+	}
 
+	cout << "\nMinimum is: " << minimum << endl;
 	return minimum;
 }
 
-int get_num_of_occurances_in_serial(unsigned char* arr, unsigned int arr_size)
+int get_num_of_occurances_in_serial(float* arr, unsigned int arr_size)
 {
-	unsigned char occurance = find_minimum_in_array_in_serial(arr, arr_size);
+	float occurance = find_minimum_in_array_in_serial(arr, arr_size);
 	int num_of_occurances = 0;
 
 	for (int i = 0; i < arr_size; i++)
