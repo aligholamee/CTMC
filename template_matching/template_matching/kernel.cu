@@ -13,6 +13,8 @@
 	} while (0)																								\
 
 #define M_PI 3.14159265
+#define BLOCK_SIZE_X 32
+#define BLOCK_SIZE_Y 32
 
 using namespace std;
 
@@ -29,6 +31,10 @@ BITMAP read_bitmap_image(string);
 BITMAP rotate_bitmap_image(BITMAP, double);
 void save_bitmap_image(string, BITMAP);
 void device_query();
+void print_array(unsigned char *, unsigned int);
+unsigned char find_minimum_in_array_in_serial(unsigned char *, unsigned int);
+int get_num_of_occurances_in_serial(unsigned char*, unsigned int);
+
 
 /*
 *	CUDA Kernel to compute MSEs
@@ -41,10 +47,10 @@ computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char*
 	int stride = 1;
 	int virtualKernelMSE = 0;
 
-	int virtual_kernel_col_start = row;
-	int virtual_kernel_col_end = virtual_kernel_col_start + kernel_width;
-	int virtual_kernel_row_start = col * stride;
+	int virtual_kernel_row_start = row;
 	int virtual_kernel_row_end = virtual_kernel_row_start + kernel_height;
+	int virtual_kernel_col_start = col * stride;
+	int virtual_kernel_col_end = virtual_kernel_row_start + kernel_width;
 
 	if (virtual_kernel_col_end < image_width && virtual_kernel_row_end < image_height) {
 		for (int kernelRow = 0; kernelRow < kernel_height; kernelRow++) {
@@ -67,9 +73,9 @@ int main()
 	BITMAP mainImage = read_bitmap_image("collection.bmp");
 	BITMAP templateImage = read_bitmap_image("collection_coin.bmp");
 
-	// initiate_template_matching(mainImage, templateImage);
+	initiate_template_matching(mainImage, templateImage);
 
-	device_query();
+	// device_query();
 	system("pause");
 	return 0;
 }
@@ -80,27 +86,36 @@ int	initiate_template_matching(BITMAP mainImage, BITMAP templateImage)
 	unsigned char* d_TemplateImage;
 	int height_difference = mainImage.height - templateImage.height;
 	int width_difference = mainImage.width - templateImage.width;
+	int kernel_MSE_size = (height_difference + 1) * (width_difference + 1);
 	unsigned char* d_KernelMSEs;
+	unsigned char* h_KernelMSEs;
 	cudaEvent_t start;
 	cudaEvent_t stop;
 	float elapsed_time = 0.0f;
 
 	errorHandler(cudaMalloc((void **)&d_MainImage, mainImage.size * sizeof(unsigned char)));
 	errorHandler(cudaMalloc((void **)&d_TemplateImage, templateImage.size * sizeof(unsigned char)));
-	errorHandler(cudaMalloc((void **)&d_KernelMSEs, (height_difference + 1) * (width_difference + 1)));
+	errorHandler(cudaMalloc((void **)&d_KernelMSEs, kernel_MSE_size* sizeof(unsigned char)));
+	h_KernelMSEs = new unsigned char[kernel_MSE_size];
 	errorHandler(cudaMemcpy(d_MainImage, mainImage.pixels, mainImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaMemcpy(d_TemplateImage, templateImage.pixels, templateImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaEventCreate(&start));
 	errorHandler(cudaEventCreate(&stop));
 	errorHandler(cudaEventRecord(start));
 	
-	//
+	dim3 grid_dimensions(ceil((float)mainImage.width/BLOCK_SIZE_X), ceil((float)mainImage.height/BLOCK_SIZE_Y), 1);
+	dim3 block_dimensions(BLOCK_SIZE_X, BLOCK_SIZE_Y, 1);
+	computeMSEKernel << <grid_dimensions, block_dimensions >> > (d_KernelMSEs, d_MainImage, d_TemplateImage, kernel_MSE_size, mainImage.width, mainImage.height, templateImage.width, templateImage.height);
 
 	errorHandler(cudaGetLastError());
 	errorHandler(cudaEventRecord(stop, NULL));
 	errorHandler(cudaEventSynchronize(stop));
 	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
 	wcout << "Elapsed time in msec = " << elapsed_time << endl;
+	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size, cudaMemcpyDeviceToHost));
+	//
+
+	wcout << "Number of occurances = " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size) << endl;
 	errorHandler(cudaFree(d_MainImage));
 	errorHandler(cudaFree(d_TemplateImage));
 
@@ -214,3 +229,32 @@ void device_query()
 	}
 }
 
+void print_array(unsigned char* arr, unsigned int arr_size)
+{
+	wcout << "\nResults: " << endl;
+	for (int i = 0; i < arr_size; i++) {
+		wcout << arr[i] << " ";
+	}
+}
+
+unsigned char find_minimum_in_array_in_serial(unsigned char * arr, unsigned int arr_size)
+{
+	unsigned char minimum = arr[0];
+	for (int i = 0; i < arr_size; i++)
+		if (arr[i] < minimum)
+			minimum = arr[i];
+
+	return minimum;
+}
+
+int get_num_of_occurances_in_serial(unsigned char* arr, unsigned int arr_size)
+{
+	unsigned char occurance = 0;
+	int num_of_occurances = 0;
+
+	for (int i = 0; i < arr_size; i++)
+		if (arr[i] == occurance)
+			num_of_occurances++;
+
+	return num_of_occurances;
+}
