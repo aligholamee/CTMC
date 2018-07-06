@@ -41,12 +41,12 @@ int get_num_of_occurances_in_serial(float*, unsigned int);
 *	CUDA Kernel to compute MSEs
 */
 __global__ void
-computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char* kernel, int kernelMSESize, int image_width, int image_height, int kernel_width, int kernel_height)
+computeMSEKernel(float* kernelMSEs, unsigned char* image, unsigned char* kernel, int kernelMSESize, int image_width, int image_height, int kernel_width, int kernel_height)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 	int stride = 1;
-	int virtualKernelMSE = 0;
+	float virtualKernelMSE = 0;
 
 	int virtual_kernel_row_start = row;
 	int virtual_kernel_row_end = virtual_kernel_row_start + kernel_height;
@@ -58,7 +58,8 @@ computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char*
 			for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
 				int imageRow = virtual_kernel_row_start + kernelRow;
 				int imageCol = virtual_kernel_col_start + kernelCol;
-				virtualKernelMSE += image[imageRow * image_width + imageCol] - kernel[kernelRow * kernel_width + kernelCol];
+				float error = image[imageRow * image_width + imageCol] - kernel[kernelRow * kernel_width + kernelCol];
+				virtualKernelMSE += error * error;
 			}
 		}
 	}
@@ -74,8 +75,9 @@ int main()
 	BITMAP mainImage = read_bitmap_image("coin_col.bmp");
 	BITMAP templateImage = read_bitmap_image("coin.bmp");
 
-	// initiate_parallel_template_matching(mainImage, templateImage);
-	serial_template_matching(mainImage, templateImage);
+	templateImage = rotate_bitmap_image(templateImage, 270);
+	initiate_parallel_template_matching(mainImage, templateImage);
+	// serial_template_matching(mainImage, templateImage);
 	// device_query();
 	system("pause");
 	return 0;
@@ -88,16 +90,16 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	int height_difference = mainImage.height - templateImage.height;
 	int width_difference = mainImage.width - templateImage.width;
 	int kernel_MSE_size = (height_difference + 1) * (width_difference + 1);
-	unsigned char* d_KernelMSEs;
-	unsigned char* h_KernelMSEs;
+	float* d_KernelMSEs;
+	float* h_KernelMSEs;
 	cudaEvent_t start;
 	cudaEvent_t stop;
 	float elapsed_time = 0.0f;
 
 	errorHandler(cudaMalloc((void **)&d_MainImage, mainImage.size * sizeof(unsigned char)));
 	errorHandler(cudaMalloc((void **)&d_TemplateImage, templateImage.size * sizeof(unsigned char)));
-	errorHandler(cudaMalloc((void **)&d_KernelMSEs, kernel_MSE_size* sizeof(unsigned char)));
-	h_KernelMSEs = new unsigned char[kernel_MSE_size];
+	errorHandler(cudaMalloc((void **)&d_KernelMSEs, kernel_MSE_size* sizeof(float)));
+	h_KernelMSEs = new float[kernel_MSE_size];
 	errorHandler(cudaMemcpy(d_MainImage, mainImage.pixels, mainImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaMemcpy(d_TemplateImage, templateImage.pixels, templateImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaEventCreate(&start));
@@ -113,7 +115,12 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	errorHandler(cudaEventSynchronize(stop));
 	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
 	wcout << "Elapsed time in msec = " << elapsed_time << endl;
-	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size, cudaMemcpyDeviceToHost));
+	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size * sizeof(float), cudaMemcpyDeviceToHost));
+	wcout << "[[[ Parallel Computation Results ]]] " << endl;
+	wcout << "[Main Image Dimensions]: " << mainImage.height << "*" << mainImage.width << endl;
+	wcout << "[Template Image Dimensions]: " << templateImage.height << "*" << templateImage.width << endl;
+	wcout << "[MSE Array Size]:	" << kernel_MSE_size << endl;
+	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size) << endl;
 	errorHandler(cudaFree(d_MainImage));
 	errorHandler(cudaFree(d_TemplateImage));
 
@@ -189,7 +196,7 @@ BITMAP rotate_bitmap_image(BITMAP image, double degree)
 
 	double x0 = 0.5 * (image.width - 1); 
 	double y0 = 0.5 * (image.height - 1);
-
+	 
 	for (int x = 0; x < image.width; x++) {
 		for (int y = 0; y < image.height; y++) {
 			long double a = x - x0;
@@ -276,7 +283,6 @@ float find_minimum_in_array_in_serial(float* arr, unsigned int arr_size)
 		}
 	}
 
-	cout << "\nMinimum is: " << minimum << endl;
 	return minimum;
 }
 
