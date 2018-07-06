@@ -127,8 +127,8 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 	int MSE_size = (height_difference + 1) * (width_difference + 1);
 	unsigned char * mseArray = new unsigned char[MSE_size];
 
-	for (int row = 0; row < mainImage.width; row++) {
-		for (int col = 0; col < mainImage.height; col++) {
+	for (int row = 0; row < mainImage.height; row++) {
+		for (int col = 0; col < mainImage.width; col++) {
 			if (row + templateImage.height < mainImage.height && col + templateImage.width < mainImage.width) {
 				for (int i = 0; i < templateImage.height; i++) {
 					for (int j = 0; j < templateImage.width; j++) {
@@ -136,16 +136,21 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 						int vCol = col + j;
 						int indexInsideMSEArray = row * mainImage.width + col;
 
-						if (indexInsideMSEArray < MSE_size)
-							mseArray[indexInsideMSEArray] = mainImage.pixels[vRow * mainImage.width + vCol] - templateImage.pixels[i * templateImage.width + j];
+						if (indexInsideMSEArray < MSE_size) {
+							unsigned char error = mainImage.pixels[vRow * mainImage.width + vCol] - templateImage.pixels[i * templateImage.width + j];
+							mseArray[indexInsideMSEArray] = error * error;
+						}
 					}
 				}
 			}
 		}
 	}
 
-
-	wcout << "[Serial Computation Completed] Number of occurances: " << get_num_of_occurances_in_serial(mseArray, MSE_size);
+	wcout << "[[[ Serial Computation Results ]]] " << endl;
+	wcout << "[Main Image Dimensions]: " << mainImage.height << "*" << mainImage.width << endl;
+	wcout << "[Template Image Dimensions]: " << templateImage.height << "*" << templateImage.width << endl;
+	wcout << "[MSE Array Size]:	" << MSE_size << endl;
+	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(mseArray, MSE_size) << endl;
 }
 
 BITMAP read_bitmap_image(string file_name)
@@ -275,7 +280,7 @@ unsigned char find_minimum_in_array_in_serial(unsigned char * arr, unsigned int 
 
 int get_num_of_occurances_in_serial(unsigned char* arr, unsigned int arr_size)
 {
-	unsigned char occurance = 0;
+	unsigned char occurance = find_minimum_in_array_in_serial(arr, arr_size);
 	int num_of_occurances = 0;
 
 	for (int i = 0; i < arr_size; i++)
