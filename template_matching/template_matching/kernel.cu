@@ -208,7 +208,13 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 						for (int j = 0; j < templateImage.width; j++) {
 							int vRow = row + i;
 							int vCol = col + j;
-							float error = float(mainImage.pixels[vRow * mainImage.width + vCol] - '0') - float(templateImage.pixels[i * templateImage.width + j] - '0');
+							float m_r = float(mainImage.pixels[(vRow * mainImage.width + vCol) * 3] - '0');
+							float m_g = float(mainImage.pixels[(vRow * mainImage.width + vCol) * 3 + 1] - '0');
+							float m_b = float(mainImage.pixels[(vRow * mainImage.width + vCol) * 3 + 2] - '0');
+							float t_r = float(templateImage.pixels[(i * templateImage.width + j) * 3] - '0');
+							float t_g = float(templateImage.pixels[(i * templateImage.width + j) * 3 + 1] - '0');
+							float t_b = float(templateImage.pixels[(i * templateImage.width + j) * 3 + 2] - '0');
+							float error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
 							mseArray[indexInsideMSEArray] += error * error;
 						}
 					}
