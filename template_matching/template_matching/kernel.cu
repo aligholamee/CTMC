@@ -71,8 +71,8 @@ computeMSEKernel(unsigned char* kernelMSEs, unsigned char* image, unsigned char*
 
 int main()
 {
-	BITMAP mainImage = read_bitmap_image("collection.bmp");
-	BITMAP templateImage = read_bitmap_image("collection_item.bmp");
+	BITMAP mainImage = read_bitmap_image("coin_col.bmp");
+	BITMAP templateImage = read_bitmap_image("coin.bmp");
 
 	// initiate_parallel_template_matching(mainImage, templateImage);
 	serial_template_matching(mainImage, templateImage);
