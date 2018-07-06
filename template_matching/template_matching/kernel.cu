@@ -36,7 +36,7 @@ void device_query();
 void print_array(unsigned char *, unsigned int);
 float find_minimum_in_array_in_serial(float*, unsigned int);
 int get_num_of_occurances_in_serial(float*, unsigned int, float, bool);
-
+void remove_zeros(float *, unsigned int);
 
 /*
 *	CUDA Kernel to compute MSEs
@@ -64,11 +64,14 @@ computeMSEKernel(float* kernelMSEs, unsigned char* image, unsigned char* kernel,
 			}
 		}
 	}
+	__syncthreads();
 	
 	int myIndexInKernelMSEsArray = row * image_width + col;
 	if (myIndexInKernelMSEsArray < kernelMSESize) {
-		kernelMSEs[myIndexInKernelMSEsArray] = virtualKernelMSE;
+		if(virtualKernelMSE != 0)
+			kernelMSEs[myIndexInKernelMSEsArray] = virtualKernelMSE;
 	}
+
 }
 
 
@@ -175,12 +178,14 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
 	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size * sizeof(float), cudaMemcpyDeviceToHost));
 	errorHandler(cudaMemcpy(h_Min_MSE, d_Min_MSE, sizeof(float), cudaMemcpyDeviceToHost));
+
 	wcout << "[[[ Parallel Computation Results ]]] " << endl;
 	wcout << "Elapsed time in msec = " << elapsed_time << endl;
 	wcout << "[Main Image Dimensions]: " << mainImage.height << "*" << mainImage.width << endl;
 	wcout << "[Template Image Dimensions]: " << templateImage.height << "*" << templateImage.width << endl;
 	wcout << "[MSE Array Size]:	" << kernel_MSE_size << endl;
 	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size, *h_Min_MSE, false) << endl;
+	wcout << "[Found Minimum]:  " << *h_Min_MSE << endl;
 	errorHandler(cudaFree(d_MainImage));
 	errorHandler(cudaFree(d_TemplateImage));
 
@@ -211,7 +216,6 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 			}
 		}
 	}
-
 	wcout << "[[[ Serial Computation Results ]]] " << endl;
 	wcout << "[Main Image Dimensions]: " << mainImage.height << "*" << mainImage.width << endl;
 	wcout << "[Template Image Dimensions]: " << templateImage.height << "*" << templateImage.width << endl;
@@ -338,11 +342,11 @@ float find_minimum_in_array_in_serial(float* arr, unsigned int arr_size)
 {
 	float minimum = arr[0];
 	for (int i = 0; i < arr_size; i++) {
-		if (arr[i] < minimum && arr[i] != 0) {
+		if (arr[i] < minimum) {
 			minimum = arr[i];
 		}
 	}
-
+	wcout << "[Found MINIMUM]:  " << minimum << endl;
 	return minimum;
 }
 
