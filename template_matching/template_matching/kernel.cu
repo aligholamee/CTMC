@@ -159,10 +159,12 @@ int main()
 	BITMAP mainImage = read_bitmap_image("coin_col.bmp");
 	BITMAP templateImage = read_bitmap_image("coin.bmp");
 
+	// save_bitmap_image("rotated.bmp", rotate_bitmap_image(templateImage, 270));
+
 	// templateImage = rotate_bitmap_image(templateImage, 270);
-	initiate_parallel_template_matching(mainImage, templateImage);
+	// initiate_parallel_template_matching(mainImage, templateImage);
 	wcout << "\n========================================" << endl;
-	serial_template_matching(mainImage, templateImage);
+	// serial_template_matching(mainImage, templateImage);
 	// device_query();
 	system("pause");
 	return 0;
