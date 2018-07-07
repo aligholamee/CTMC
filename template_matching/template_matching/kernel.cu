@@ -9,7 +9,7 @@
 		cudaError_t err = stmt;																				\
 		if (err != cudaSuccess) {																			\
 			printf("[ERROR] Failed to run stmt %d, error body: %s\n", __LINE__, cudaGetErrorString(err));	\
-			return -1; }																					\
+			return -1; }																 					\
 	} while (0)																								\
 
 #define M_PI 3.14159265
@@ -33,7 +33,6 @@ BITMAP read_bitmap_image(string);
 BITMAP rotate_bitmap_image(BITMAP, double);
 void save_bitmap_image(string, BITMAP);
 void device_query();
-void print_array(unsigned char *, unsigned int);
 int find_minimum_in_array_in_serial(int*, unsigned int);
 int get_num_of_occurances_in_serial(int*, unsigned int, int, bool);
 
@@ -65,17 +64,17 @@ computeMSEKernel(int* kernelMSEs, unsigned char* image, unsigned char* kernel, i
 				int t_g = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 1] - '0');
 				int t_b = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 2] - '0');
 				int error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
-				virtualKernelMSE += error * error;
+				virtualKernelMSE += error;
 			}
 		}
-	}
-	__syncthreads();
 
-	int myIndexInKernelMSEsArray = row * image_width + col;
-	if (myIndexInKernelMSEsArray < kernelMSESize) {
-		kernelMSEs[myIndexInKernelMSEsArray] = virtualKernelMSE;
-	}
+		__syncthreads();
 
+		int myIndexInKernelMSEsArray = row * image_width + col;
+		if (myIndexInKernelMSEsArray < kernelMSESize) {
+			kernelMSEs[myIndexInKernelMSEsArray] = virtualKernelMSE;
+		}
+	}
 }
 
 
@@ -189,8 +188,8 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	wcout << "[Main Image Dimensions]: " << mainImage.height << "*" << mainImage.width << endl;
 	wcout << "[Template Image Dimensions]: " << templateImage.height << "*" << templateImage.width << endl;
 	wcout << "[MSE Array Size]:	" << kernel_MSE_size << endl;
-	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size, *h_Min_MSE, false) << endl;
 	wcout << "[Found Minimum]:  " << *h_Min_MSE << endl;
+	wcout << "[Number of occurances]: " << get_num_of_occurances_in_serial(h_KernelMSEs, kernel_MSE_size, *h_Min_MSE, false) << endl;
 	errorHandler(cudaFree(d_MainImage));
 	errorHandler(cudaFree(d_TemplateImage));
 
@@ -199,9 +198,6 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 
 void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 {
-	int yy = threadIdx.x + blockIdx.x * blockDim.x;
-	int xx = threadIdx.y + blockIdx.y * blockDim.y;
-
 	int height_difference = mainImage.height - templateImage.height;
 	int width_difference = mainImage.width - templateImage.width;
 	int MSE_size = (height_difference + 1) * (width_difference + 1);
@@ -223,7 +219,7 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 							int t_g = int(templateImage.pixels[(i * templateImage.width + j) * 3 + 1] - '0');
 							int t_b = int(templateImage.pixels[(i * templateImage.width + j) * 3 + 2] - '0');
 							int error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
-							mseArray[indexInsideMSEArray] += error * error;
+							mseArray[indexInsideMSEArray] += error;
 						}
 					}
 				}
@@ -254,12 +250,6 @@ BITMAP read_bitmap_image(string file_name)
 	image.pixels = new unsigned char[image.size];
 	fread(image.pixels, sizeof(unsigned char), image.size, f);
 	fclose(f);
-
-	for (i = 0; i < image.size; i += 3) {
-		unsigned char tmp = image.pixels[i];
-		image.pixels[i] = image.pixels[i + 2];
-		image.pixels[i + 2] = tmp;
-	}
 
 	return image;
 }
@@ -302,11 +292,6 @@ void save_bitmap_image(string file_name, BITMAP image)
 
 	int i;
 	unsigned char tmp;
-	for (i = 0; i < image.size; i += 3) {
-		tmp = image.pixels[i];
-		image.pixels[i] = image.pixels[i + 2];
-		image.pixels[i + 2] = tmp;
-	}
 
 	fwrite(image.pixels, sizeof(unsigned char), image.size, out);
 	fclose(out);
@@ -341,14 +326,6 @@ void device_query()
 		wcout << "  Concurrent Kernels:		" << props.concurrentKernels;
 
 		wcout << endl;
-	}
-}
-
-void print_array(int* arr, unsigned int arr_size)
-{
-	wcout << "\nResults: " << endl;
-	for (int i = 0; i < arr_size; i++) {
-		wcout << arr[i] << " ";
 	}
 }
 
