@@ -20,7 +20,7 @@
 using namespace std;
 
 struct BITMAP {
-	int width; 
+	int width;
 	int height;
 	unsigned char header[54];
 	unsigned char *pixels;
@@ -34,20 +34,19 @@ BITMAP rotate_bitmap_image(BITMAP, double);
 void save_bitmap_image(string, BITMAP);
 void device_query();
 void print_array(unsigned char *, unsigned int);
-float find_minimum_in_array_in_serial(float*, unsigned int);
-int get_num_of_occurances_in_serial(float*, unsigned int, float, bool);
-void remove_zeros(float *, unsigned int);
+int find_minimum_in_array_in_serial(int*, unsigned int);
+int get_num_of_occurances_in_serial(int*, unsigned int, int, bool);
 
 /*
 *	CUDA Kernel to compute MSEs
 */
 __global__ void
-computeMSEKernel(float* kernelMSEs, unsigned char* image, unsigned char* kernel, int kernelMSESize, int image_width, int image_height, int kernel_width, int kernel_height)
+computeMSEKernel(int* kernelMSEs, unsigned char* image, unsigned char* kernel, int kernelMSESize, int image_width, int image_height, int kernel_width, int kernel_height)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 	int stride = 1;
-	float virtualKernelMSE = 0;
+	int virtualKernelMSE = 0;
 
 	int virtual_kernel_row_start = row;
 	int virtual_kernel_row_end = virtual_kernel_row_start + kernel_height;
@@ -59,23 +58,22 @@ computeMSEKernel(float* kernelMSEs, unsigned char* image, unsigned char* kernel,
 			for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
 				int imageRow = virtual_kernel_row_start + kernelRow;
 				int imageCol = virtual_kernel_col_start + kernelCol;
-				float m_r = float(image[(imageRow * image_width + imageCol) * 3] - '0');
-				float m_g = float(image[(imageRow * image_width + imageCol) * 3 + 1] - '0');
-				float m_b = float(image[(imageRow * image_width + imageCol) * 3 + 2] - '0');
-				float t_r = float(kernel[(kernelRow * kernel_width + kernelCol) * 3] - '0');
-				float t_g = float(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 1] - '0');
-				float t_b = float(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 2] - '0');
-				float error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
+				int m_r = int(image[(imageRow * image_width + imageCol) * 3] - '0');
+				int m_g = int(image[(imageRow * image_width + imageCol) * 3 + 1] - '0');
+				int m_b = int(image[(imageRow * image_width + imageCol) * 3 + 2] - '0');
+				int t_r = int(kernel[(kernelRow * kernel_width + kernelCol) * 3] - '0');
+				int t_g = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 1] - '0');
+				int t_b = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 2] - '0');
+				int error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
 				virtualKernelMSE += error * error;
 			}
 		}
 	}
 	__syncthreads();
-	
+
 	int myIndexInKernelMSEsArray = row * image_width + col;
 	if (myIndexInKernelMSEsArray < kernelMSESize) {
-		if(virtualKernelMSE != 0)
-			kernelMSEs[myIndexInKernelMSEsArray] = virtualKernelMSE;
+		kernelMSEs[myIndexInKernelMSEsArray] = virtualKernelMSE;
 	}
 
 }
@@ -85,15 +83,15 @@ computeMSEKernel(float* kernelMSEs, unsigned char* image, unsigned char* kernel,
 *	CUDA Kernel to compute the minimum number in an array
 */
 __global__ void
-findMinInArrayKernel(float* kernelMSEs, int kernelMSESize, float *min_MSE, int * mutex)
+findMinInArrayKernel(int* kernelMSEs, int kernelMSESize, int *min_MSE, int * mutex)
 {
 	unsigned int tId = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int stride = gridDim.x * blockDim.x;
 	unsigned int offset = 0;
 
-	__shared__ float cache[BLOCK_SIZE];
+	__shared__ int cache[BLOCK_SIZE];
 
-	float temp = 0.0;
+	int temp = 1000;
 	while (tId + offset < kernelMSESize) {
 		temp = fminf(temp, kernelMSEs[tId + offset]);
 		offset += stride;
@@ -125,7 +123,7 @@ findMinInArrayKernel(float* kernelMSEs, int kernelMSESize, float *min_MSE, int *
 		atomicExch(mutex, 0);
 	}
 }
-
+ 
 int main()
 {
 	BITMAP mainImage = read_bitmap_image("coin_col.bmp");
@@ -133,6 +131,7 @@ int main()
 
 	// templateImage = rotate_bitmap_image(templateImage, 270);
 	initiate_parallel_template_matching(mainImage, templateImage);
+	wcout << "========================================" << endl;
 	serial_template_matching(mainImage, templateImage);
 	// device_query();
 	system("pause");
@@ -146,10 +145,10 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	int height_difference = mainImage.height - templateImage.height;
 	int width_difference = mainImage.width - templateImage.width;
 	int kernel_MSE_size = (height_difference + 1) * (width_difference + 1);
-	float* d_KernelMSEs;
-	float* h_KernelMSEs;
-	float* d_Min_MSE;
-	float* h_Min_MSE;
+	int* d_KernelMSEs;
+	int* h_KernelMSEs;
+	int* d_Min_MSE;
+	int* h_Min_MSE;
 	int* d_mutex;
 	cudaEvent_t start;
 	cudaEvent_t stop;
@@ -157,20 +156,20 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 
 	errorHandler(cudaMalloc((void **)&d_MainImage, mainImage.size * sizeof(unsigned char)));
 	errorHandler(cudaMalloc((void **)&d_TemplateImage, templateImage.size * sizeof(unsigned char)));
-	errorHandler(cudaMalloc((void **)&d_KernelMSEs, kernel_MSE_size* sizeof(float)));
-	errorHandler(cudaMalloc((void **)&d_Min_MSE, sizeof(float)));
+	errorHandler(cudaMalloc((void **)&d_KernelMSEs, kernel_MSE_size * sizeof(int)));
+	errorHandler(cudaMalloc((void **)&d_Min_MSE, sizeof(int)));
 	errorHandler(cudaMalloc((void **)&d_mutex, sizeof(int)));
-	errorHandler(cudaMemset(d_Min_MSE, 0, sizeof(float)));
+	errorHandler(cudaMemset(d_Min_MSE, 0, sizeof(int)));
 	errorHandler(cudaMemset(d_mutex, 0, sizeof(int)));
-	h_KernelMSEs = new float[kernel_MSE_size];
-	h_Min_MSE = new float[1];
+	h_KernelMSEs = new int[kernel_MSE_size];
+	h_Min_MSE = new int[1];
 	errorHandler(cudaMemcpy(d_MainImage, mainImage.pixels, mainImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaMemcpy(d_TemplateImage, templateImage.pixels, templateImage.size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaEventCreate(&start));
 	errorHandler(cudaEventCreate(&stop));
 	errorHandler(cudaEventRecord(start));
-	
-	dim3 grid_dimensions(ceil((float)mainImage.width/BLOCK_SIZE_X), ceil((float)mainImage.height/BLOCK_SIZE_Y), 1);
+
+	dim3 grid_dimensions(ceil((float)mainImage.width / BLOCK_SIZE_X), ceil((float)mainImage.height / BLOCK_SIZE_Y), 1);
 	dim3 block_dimensions(BLOCK_SIZE_X, BLOCK_SIZE_Y, 1);
 	computeMSEKernel << <grid_dimensions, block_dimensions >> > (d_KernelMSEs, d_MainImage, d_TemplateImage, kernel_MSE_size, mainImage.width, mainImage.height, templateImage.width, templateImage.height);
 
@@ -182,8 +181,8 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 	errorHandler(cudaEventRecord(stop, NULL));
 	errorHandler(cudaEventSynchronize(stop));
 	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
-	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size * sizeof(float), cudaMemcpyDeviceToHost));
-	errorHandler(cudaMemcpy(h_Min_MSE, d_Min_MSE, sizeof(float), cudaMemcpyDeviceToHost));
+	errorHandler(cudaMemcpy(h_KernelMSEs, d_KernelMSEs, kernel_MSE_size * sizeof(int), cudaMemcpyDeviceToHost));
+	errorHandler(cudaMemcpy(h_Min_MSE, d_Min_MSE, sizeof(int), cudaMemcpyDeviceToHost));
 
 	wcout << "[[[ Parallel Computation Results ]]] " << endl;
 	wcout << "Elapsed time in msec = " << elapsed_time << endl;
@@ -200,10 +199,13 @@ int	initiate_parallel_template_matching(BITMAP mainImage, BITMAP templateImage)
 
 void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 {
+	int yy = threadIdx.x + blockIdx.x * blockDim.x;
+	int xx = threadIdx.y + blockIdx.y * blockDim.y;
+
 	int height_difference = mainImage.height - templateImage.height;
 	int width_difference = mainImage.width - templateImage.width;
 	int MSE_size = (height_difference + 1) * (width_difference + 1);
-	float * mseArray = new float[MSE_size];
+	int * mseArray = new int[MSE_size];
 
 	for (int row = 0; row < mainImage.height; row++) {
 		for (int col = 0; col < mainImage.width; col++) {
@@ -214,13 +216,13 @@ void serial_template_matching(BITMAP mainImage, BITMAP templateImage)
 						for (int j = 0; j < templateImage.width; j++) {
 							int vRow = row + i;
 							int vCol = col + j;
-							float m_r = float(mainImage.pixels[(vRow * mainImage.width + vCol) * 3] - '0');
-							float m_g = float(mainImage.pixels[(vRow * mainImage.width + vCol) * 3 + 1] - '0');
-							float m_b = float(mainImage.pixels[(vRow * mainImage.width + vCol) * 3 + 2] - '0');
-							float t_r = float(templateImage.pixels[(i * templateImage.width + j) * 3] - '0');
-							float t_g = float(templateImage.pixels[(i * templateImage.width + j) * 3 + 1] - '0');
-							float t_b = float(templateImage.pixels[(i * templateImage.width + j) * 3 + 2] - '0');
-							float error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
+							int m_r = int(mainImage.pixels[(vRow * mainImage.width + vCol) * 3] - '0');
+							int m_g = int(mainImage.pixels[(vRow * mainImage.width + vCol) * 3 + 1] - '0');
+							int m_b = int(mainImage.pixels[(vRow * mainImage.width + vCol) * 3 + 2] - '0');
+							int t_r = int(templateImage.pixels[(i * templateImage.width + j) * 3] - '0');
+							int t_g = int(templateImage.pixels[(i * templateImage.width + j) * 3 + 1] - '0');
+							int t_b = int(templateImage.pixels[(i * templateImage.width + j) * 3 + 2] - '0');
+							int error = (m_r - t_r) + (m_g - t_g) + (m_b - t_b);
 							mseArray[indexInsideMSEArray] += error * error;
 						}
 					}
@@ -270,9 +272,9 @@ BITMAP rotate_bitmap_image(BITMAP image, double degree)
 	int sinf = (int)sin(radians);
 	int cosf = (int)cos(radians);
 
-	double x0 = 0.5 * (image.width - 1); 
+	double x0 = 0.5 * (image.width - 1);
 	double y0 = 0.5 * (image.height - 1);
-	 
+
 	for (int x = 0; x < image.width; x++) {
 		for (int y = 0; y < image.height; y++) {
 			long double a = x - x0;
@@ -293,7 +295,7 @@ BITMAP rotate_bitmap_image(BITMAP image, double degree)
 }
 
 void save_bitmap_image(string file_name, BITMAP image)
-{ 
+{
 	string file_path = "Output Files/" + file_name;
 	FILE *out = fopen(file_path.c_str(), "wb");
 	fwrite(image.header, sizeof(unsigned char), 54, out);
@@ -342,7 +344,7 @@ void device_query()
 	}
 }
 
-void print_array(unsigned char* arr, unsigned int arr_size)
+void print_array(int* arr, unsigned int arr_size)
 {
 	wcout << "\nResults: " << endl;
 	for (int i = 0; i < arr_size; i++) {
@@ -350,30 +352,29 @@ void print_array(unsigned char* arr, unsigned int arr_size)
 	}
 }
 
-float find_minimum_in_array_in_serial(float* arr, unsigned int arr_size)
+int find_minimum_in_array_in_serial(int* arr, unsigned int arr_size)
 {
-	float minimum = arr[0];
+	int minimum = 1000;
 	for (int i = 0; i < arr_size; i++) {
 		if (arr[i] < minimum) {
 			minimum = arr[i];
 		}
 	}
-	wcout << "[Found MINIMUM]:  " << minimum << endl;
+	wcout << "[Found Minimum]:  " << minimum << endl;
 	return minimum;
 }
 
-int get_num_of_occurances_in_serial(float* arr, unsigned int arr_size, float min_value, bool find_min_value)
+int get_num_of_occurances_in_serial(int* arr, unsigned int arr_size, int min_value, bool find_min_value)
 {
-	float occurance;
-	
+	int occurance;
+	int num_of_occurances = 0;
+
 	if (!find_min_value) {
 		occurance = min_value;
 	}
 	else {
 		occurance = find_minimum_in_array_in_serial(arr, arr_size);
 	}
-
-	int num_of_occurances = 0;
 
 	for (int i = 0; i < arr_size; i++)
 		if (arr[i] == occurance)
