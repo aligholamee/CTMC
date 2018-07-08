@@ -44,8 +44,8 @@ computeMSEKernel(int* mse_array, unsigned char* image, unsigned char* kernel, in
 	int virtual_kernel_col_end = virtual_kernel_row_start + kernel_width;
 
 	if (virtual_kernel_col_end < image_width && virtual_kernel_row_end < image_height) {
-		for (int kernelRow = 0; kernelRow < kernel_height; kernelRow++) {
-			for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
+		for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
+			for (int kernelRow = 0; kernelRow < kernel_height; kernelRow++) {
 
 				int imageRow = virtual_kernel_row_start + kernelRow;
 				int imageCol = virtual_kernel_col_start + kernelCol;
@@ -187,22 +187,22 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int* d_min_mse;
 	int* d_num_occurances;
 	int* d_mutex;
-	
+
 	// CUDA time handling
 	cudaEvent_t start;
 	cudaEvent_t stop;
 	float elapsed_time = 0.0f;
-	
+
 	// Host allocation
 
 	/*
-		Extract Matrices
+	Extract Matrices
 	*/
 
 	h_main_image = new unsigned char[3 * main_size];
 
-	for (size_t row = 0; row < main_height; row++) {
-		for (size_t col = 0; col < main_width; col++) {
+	for (size_t col = 0; col < main_width; col++) {
+		for (size_t row = 0; row < main_height; row++) {
 			rgb_t colors;
 
 			main_image.get_pixel(col, row, colors);
@@ -214,8 +214,8 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	h_template_image = new unsigned char[3 * template_size];
 
-	for (size_t row = 0; row < template_height; row++) {
-		for (size_t col = 0; col < template_width; col++) {
+	for (size_t col = 0; col < template_width; col++) {
+		for (size_t row = 0; row < template_height; row++) {
 			rgb_t colors;
 
 			template_image.get_pixel(col, row, colors);
@@ -226,7 +226,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	}
 
 	/*
-	*************************	
+	*************************
 	*/
 
 	h_mse_array = new int[mse_array_size];
@@ -272,7 +272,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	wcout << "[Template Image Dimensions]: " << template_height << "*" << template_width << endl;
 	wcout << "[MSE Array Size]:	" << mse_array_size << endl;
 	wcout << "[Found Minimum]:  " << *h_min_mse << endl;
-	wcout << "[Number of occurances]: " << *h_num_occurances;
+	wcout << "[Number of occurances]: " << *h_num_occurances << endl;
 	errorHandler(cudaFree(d_main_image));
 	errorHandler(cudaFree(d_template_image));
 	free(h_main_image);
@@ -282,7 +282,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image templateImage)
 {
-	
+
 	size_t main_width = mainImage.width();
 	size_t main_height = mainImage.height();
 	size_t template_width = templateImage.width();
@@ -294,13 +294,13 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 	unsigned int NUM_OCCURANCES = 0;
 	wcout << "[[[ Initiated Serial Template Matching ]]] " << endl;
 
-	for (size_t row = 0; row < main_height - template_height; row++) {
-		for (size_t col = 0; col < main_width - template_width; col++) {
+	for (size_t col = 0; col < main_width - template_width; col++) {
+		for (size_t row = 0; row < main_height - template_height; row++) {
 
 			float SUM_OF_ABSOLUTE_DEVIATIONS = 0;
 
-			for (size_t i = 0; i < template_height; i++) {
-				for (size_t j = 0; j < template_width; j++) {
+			for (size_t j = 0; j < template_width; j++) {
+				for (size_t i = 0; i < template_height; i++) {
 
 					size_t mRow = row + i;
 					size_t mCol = col + j;
@@ -312,7 +312,7 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 					templateImage.get_pixel(j, i, t_color);
 
 					SUM_OF_ABSOLUTE_DEVIATIONS += abs(m_color.red - t_color.red) + abs(m_color.green - t_color.green) + abs(m_color.blue - t_color.blue);
-					 
+
 				}
 			}
 
@@ -370,8 +370,8 @@ void extract_array(unsigned char* pixels, unsigned int pixels_size, bitmap_image
 
 	pixels = new unsigned char[3 * pixels_size];
 
-	for (size_t row = 0; row < image_height; row++) {
-		for (size_t col = 0; col < image_width; col++) {
+	for (size_t col = 0; col < image_width; col++) {
+		for (size_t row = 0; row < image_height; row++) {
 			rgb_t colors;
 
 			image.get_pixel(col, row, colors);
