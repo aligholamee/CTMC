@@ -25,6 +25,7 @@ using namespace std;
 int initiate_parallel_template_matching(bitmap_image, bitmap_image);
 void initiate_serial_template_matching(bitmap_image, bitmap_image);
 void device_query();
+void extract_array(unsigned char*, unsigned int, bitmap_image);
 
 /*
 *	CUDA Kernel to compute MSEs
@@ -45,8 +46,10 @@ computeMSEKernel(int* mse_array, unsigned char* image, unsigned char* kernel, in
 	if (virtual_kernel_col_end < image_width && virtual_kernel_row_end < image_height) {
 		for (int kernelRow = 0; kernelRow < kernel_height; kernelRow++) {
 			for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
+
 				int imageRow = virtual_kernel_row_start + kernelRow;
 				int imageCol = virtual_kernel_col_start + kernelCol;
+
 				int m_r = int(image[(imageRow * image_width + imageCol) * 3]);
 				int m_g = int(image[(imageRow * image_width + imageCol) * 3 + 1]);
 				int m_b = int(image[(imageRow * image_width + imageCol) * 3 + 2]);
@@ -54,7 +57,7 @@ computeMSEKernel(int* mse_array, unsigned char* image, unsigned char* kernel, in
 				int t_g = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 1]);
 				int t_b = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 2]);
 				int error = abs(m_r - t_r) + abs(m_g - t_g) + abs(m_b - t_b);
-				virtualKernelMSE += error;
+				virtual_kernel_mse += error;
 			}
 		}
 
@@ -150,8 +153,8 @@ int main()
 	bitmap_image main_image("Input Files/col.bmp");
 	bitmap_image template_image("Input Files/coin.bmp");
 
-	// initiate_parallel_template_matching(main_image, template_image);
-	initiate_serial_template_matching(main_image, template_image);
+	initiate_parallel_template_matching(main_image, template_image);
+	// initiate_serial_template_matching(main_image, template_image);
 	// device_query();
 	system("pause");
 	return 0;
@@ -171,6 +174,8 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	size_t mse_array_size = (height_difference + 1) * (width_difference + 1);
 
 	// Define host pointers
+	unsigned char* h_main_image;
+	unsigned char* h_template_image;
 	int* h_mse_array;
 	int* h_min_mse;
 	int* h_num_occurances;
@@ -189,6 +194,41 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	float elapsed_time = 0.0f;
 	
 	// Host allocation
+
+	/*
+		Extract Matrices
+	*/
+
+	h_main_image = new unsigned char[3 * main_size];
+
+	for (size_t row = 0; row < main_height; row++) {
+		for (size_t col = 0; col < main_width; col++) {
+			rgb_t colors;
+
+			main_image.get_pixel(col, row, colors);
+			h_main_image[(row * main_width + col) * 3 + 0] = colors.red;
+			h_main_image[(row * main_width + col) * 3 + 1] = colors.green;
+			h_main_image[(row * main_width + col) * 3 + 2] = colors.blue;
+		}
+	}
+
+	h_template_image = new unsigned char[3 * template_size];
+
+	for (size_t row = 0; row < template_height; row++) {
+		for (size_t col = 0; col < template_width; col++) {
+			rgb_t colors;
+
+			template_image.get_pixel(col, row, colors);
+			h_template_image[(row * template_width + col) * 3 + 0] = colors.red;
+			h_template_image[(row * template_width + col) * 3 + 1] = colors.green;
+			h_template_image[(row * template_width + col) * 3 + 2] = colors.blue;
+		}
+	}
+
+	/*
+	*************************	
+	*/
+
 	h_mse_array = new int[mse_array_size];
 	h_min_mse = new int[1];
 	h_num_occurances = new int[1];
@@ -203,8 +243,8 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	errorHandler(cudaMemset(d_min_mse, 0, sizeof(int)));
 	errorHandler(cudaMemset(d_mutex, 0, sizeof(int)));
 	errorHandler(cudaMemset(d_num_occurances, 0, sizeof(int)));
-	errorHandler(cudaMemcpy(d_main_image, mainImage.pixels, main_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
-	errorHandler(cudaMemcpy(d_template_image, templateImage.pixels, template_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
+	errorHandler(cudaMemcpy(d_main_image, h_main_image, main_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
+	errorHandler(cudaMemcpy(d_template_image, h_template_image, template_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
 	errorHandler(cudaEventCreate(&start));
 	errorHandler(cudaEventCreate(&stop));
 	errorHandler(cudaEventRecord(start));
@@ -235,7 +275,8 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	wcout << "[Number of occurances]: " << *h_num_occurances;
 	errorHandler(cudaFree(d_main_image));
 	errorHandler(cudaFree(d_template_image));
-
+	free(h_main_image);
+	free(h_template_image);
 	return EXIT_SUCCESS;
 }
 
@@ -320,4 +361,24 @@ void device_query()
 
 		wcout << endl;
 	}
+}
+
+void extract_array(unsigned char* pixels, unsigned int pixels_size, bitmap_image image)
+{
+	size_t image_width = image.width();
+	size_t image_height = image.height();
+
+	pixels = new unsigned char[3 * pixels_size];
+
+	for (size_t row = 0; row < image_height; row++) {
+		for (size_t col = 0; col < image_width; col++) {
+			rgb_t colors;
+
+			image.get_pixel(col, row, colors);
+			pixels[(row * image_width + col) * 3 + 0] = colors.red;
+			pixels[(row * image_width + col) * 3 + 1] = colors.green;
+			pixels[(row * image_width + col) * 3 + 2] = colors.blue;
+		}
+	}
+
 }
