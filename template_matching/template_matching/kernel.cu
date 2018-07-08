@@ -83,13 +83,17 @@ findMinInArrayKernel(int* mse_array, int mse_array_size, int* min_mse, int* mute
 
 	__shared__ int cache[BLOCK_SIZE];
 
-	int temp = 1000000;
+	int temp = 80000000;
 	while (tId + offset < mse_array_size) {
 		temp = fminf(temp, mse_array[tId + offset]);
 		offset += stride;
 	}
 
-	cache[threadIdx.x] = temp;
+	if(temp != 0)
+		cache[threadIdx.x] = temp;
+
+	if (cache[threadIdx.x] < 0)
+		cache[threadIdx.x] = 8000000;
 
 	__syncthreads();
 
@@ -240,7 +244,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	errorHandler(cudaMalloc((void **)&d_min_mse, sizeof(int)));
 	errorHandler(cudaMalloc((void **)&d_mutex, sizeof(int)));
 	errorHandler(cudaMalloc((void **)&d_num_occurances, sizeof(int)));
-	errorHandler(cudaMemset(d_min_mse, 0, sizeof(int)));
+	errorHandler(cudaMemset(d_min_mse, 799999, sizeof(int)));
 	errorHandler(cudaMemset(d_mutex, 0, sizeof(int)));
 	errorHandler(cudaMemset(d_num_occurances, 0, sizeof(int)));
 	errorHandler(cudaMemcpy(d_main_image, h_main_image, main_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
