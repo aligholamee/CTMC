@@ -2,6 +2,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <math.h>
+#include <chrono>
 #include <math_functions.h>
 #include <bitmap_image.hpp>
 
@@ -72,6 +73,8 @@ computeMSEKernel(int* mse_array, unsigned char* image, unsigned char* kernel, in
 		}
 	}
 }
+
+
 
 
 /*
@@ -150,14 +153,14 @@ findNumberofOccurances(int* mse_array, int* min_mse, int* mutex, int* num_occura
 		atomicExch(mutex, 0);
 	}
 }
-
 int main()
 {
 	bitmap_image main_image("Input Files/col2.bmp");
 	bitmap_image template_image("Input Files/coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
-	// initiate_serial_template_matching(main_image, template_image);
+	wcout << "\n ------- ******************* ------- \n";
+	initiate_serial_template_matching(main_image, template_image);
 	// device_query();
 	system("pause");
 	return 0;
@@ -269,14 +272,14 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	errorHandler(cudaMemcpy(h_min_mse, d_min_mse, sizeof(int), cudaMemcpyDeviceToHost));
 	errorHandler(cudaMemcpy(h_num_occurances, d_num_occurances, sizeof(int), cudaMemcpyDeviceToHost));
 
-	wcout << "[[[ Parallel Computation Results ]]] " << endl;
-	wcout << "Elapsed time in msec = " << elapsed_time << endl;
+	wcout << "[[[ Parallel Computation Results ]]] " << endl << endl;
+	wcout << "Elapsed time in msec = " << (int)(elapsed_time) << endl;
 	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
 	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
 	wcout << "[MSE Array Size]:	" << mse_array_size << endl;
 	// get_number_of_occurances(h_mse_array, mse_array_size);
 	wcout << "[Found Minimum]:  " << *h_min_mse << endl;
-	wcout << "[Number of Occurances]: " << *h_num_occurances << endl;
+	wcout << "[Number of Occurances]: " << *h_num_occurances + 1 << endl;
 	errorHandler(cudaFree(d_main_image));
 	errorHandler(cudaFree(d_template_image));
 	free(h_main_image);
@@ -286,7 +289,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image templateImage)
 {
-
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	int main_width = mainImage.width();
 	int main_height = mainImage.height();
 	int template_width = templateImage.width();
@@ -339,12 +342,13 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 		}
 	}
 
-	wcout << "[[[ Serial Computation Results ]]] " << endl;
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	wcout << "[[[ Serial Computation Results ]]] " << endl << endl;
+	wcout << "Elapsed time in msec = " << chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << endl;
 	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
 	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
 	wcout << "[Found Minimum]:  " << FOUND_MINIMUM << endl;
 	wcout << "[Number of Occurances]: " << NUM_OCCURANCES << endl;
-	wcout << "[Number of Zeros]: " << NUM_OF_ZEROS << endl;
 }
 
 void device_query()

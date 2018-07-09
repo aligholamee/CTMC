@@ -394,6 +394,10 @@ C:\Program Files (x86)\Windows Kits\10\Include\10.0.14393.0\ucrt\share.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include\cuda_runtime.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include\device_launch_parameters.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.14393.0\ucrt\math.h
+C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\chrono
+C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\ratio
+C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\thr/xtimec.h
+C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\thr/xthrcommon.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include\math_functions.h
 c:\program files\nvidia gpu computing toolkit\cuda\v9.1\include\crt/math_functions.h
 C:\bitmap-master\bitmap_image.hpp
