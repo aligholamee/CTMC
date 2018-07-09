@@ -255,11 +255,11 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	errorHandler(cudaEventCreate(&stop));
 	errorHandler(cudaEventRecord(start));
 
-	dim3 grid_dimensions(ceil((float)(main_height + 512) / BLOCK_SIZE_X), ceil((float)(main_width + 512) / BLOCK_SIZE_Y), 1);
+	dim3 grid_dimensions((unsigned int)ceil((float)(main_height + 512) / BLOCK_SIZE_X), (unsigned int)ceil((float)(main_width + 512) / BLOCK_SIZE_Y), 1);
 	dim3 block_dimensions(BLOCK_SIZE_X, BLOCK_SIZE_Y, 1);
 	computeMSEKernel << <grid_dimensions, block_dimensions >> > (d_mse_array, d_main_image, d_template_image, mse_array_size, main_width, main_height, template_width, template_height, template_size);
 
-	dim3 grid_dimensions_2(ceil((float)mse_array_size) / BLOCK_SIZE, 1, 1);
+	dim3 grid_dimensions_2((unsigned int)ceil((float)mse_array_size) / BLOCK_SIZE, 1, 1);
 	dim3 block_dimensions_2(BLOCK_SIZE, 1, 1);
 	findMinInArrayKernel << <grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, mse_array_size, d_min_mse, d_mutex);
 
@@ -333,7 +333,7 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 			}
 
 			if (NORMALIZED_SAD < FOUND_MINIMUM) {
-				FOUND_MINIMUM = NORMALIZED_SAD;
+				FOUND_MINIMUM = (int)NORMALIZED_SAD;
 			}
 
 			if (NORMALIZED_SAD == 0)
@@ -410,7 +410,7 @@ int get_number_of_occurances(int * arr, unsigned int size)
 	ofstream filemy;
 	filemy.open("output.txt");
 
-	for (int i = 0; i < size; i++) {
+	for (unsigned int i = 0; i < size; i++) {
 		filemy << arr[i] << "\n";
 		if (arr[i] < min) {
 			num_of_occurs = 1;

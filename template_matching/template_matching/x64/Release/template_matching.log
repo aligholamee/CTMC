@@ -3,9 +3,6 @@
   C:\Users\Ali Gholami\Source\Repos\CTMC\template_matching\template_matching>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\bin\nvcc.exe" -gencode=arch=compute_30,code=\"sm_30,compute_30\" --use-local-env --cl-version 2017 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\bin\HostX86\x64" -x cu  -I"C:\bitmap-master" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include"     --keep-dir x64\Release -maxrregcount=0  --machine 64 --compile -cudart static     -DWIN32 -DWIN64 -DNDEBUG -D_CONSOLE -D_MBCS -Xcompiler "/EHsc /W3 /nologo /O2 /FS /Zi  /MD " -o x64\Release\kernel.cu.obj "C:\Users\Ali Gholami\Source\Repos\CTMC\template_matching\template_matching\kernel.cu" 
   kernel.cu
 C:/Users/Ali Gholami/Source/Repos/CTMC/template_matching/template_matching/kernel.cu(258): warning C4244: 'argument': conversion from 'float' to 'unsigned int', possible loss of data
-C:/Users/Ali Gholami/Source/Repos/CTMC/template_matching/template_matching/kernel.cu(262): warning C4244: 'argument': conversion from 'float' to 'unsigned int', possible loss of data
-C:/Users/Ali Gholami/Source/Repos/CTMC/template_matching/template_matching/kernel.cu(336): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-C:/Users/Ali Gholami/Source/Repos/CTMC/template_matching/template_matching/kernel.cu(413): warning C4018: '<': signed/unsigned mismatch
   LINK : /LTCG specified but no code generation required; remove /LTCG from the link command line to improve linker performance
   template_matching.vcxproj -> C:\Users\Ali Gholami\Source\Repos\CTMC\template_matching\x64\Release\template_matching.exe
   template_matching.vcxproj -> C:\Users\Ali Gholami\Source\Repos\CTMC\template_matching\x64\Release\template_matching.pdb (Full PDB)
