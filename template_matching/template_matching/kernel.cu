@@ -297,7 +297,7 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 
 	int templateSize = template_height * template_width;
 
-	float THRESHOLD = 20.0;
+	int THRESHOLD = 20;
 	unsigned int NUM_OCCURANCES = 0;
 	int FOUND_MINIMUM = 100000;
 	int NUM_OF_ZEROS = 0;
@@ -307,7 +307,7 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 	for (int col = 0; col < main_width - template_width; col++) {
 		for (int row = 0; row < main_height - template_height; row++) {
 
-			float SUM_OF_ABSOLUTE_DEVIATIONS = 0;
+			int SUM_OF_ABSOLUTE_DEVIATIONS = 0;
 
 			for (int j = 0; j < template_width; j++) {
 				for (int i = 0; i < template_height; i++) {
@@ -326,7 +326,7 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 				}
 			}
 
-			float NORMALIZED_SAD = (SUM_OF_ABSOLUTE_DEVIATIONS / (float)templateSize);
+			int NORMALIZED_SAD = (int)(SUM_OF_ABSOLUTE_DEVIATIONS / (float)templateSize);
 			
 			if (NORMALIZED_SAD < THRESHOLD) {
 				NUM_OCCURANCES++;
