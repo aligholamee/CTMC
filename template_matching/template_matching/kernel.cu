@@ -6,6 +6,7 @@
 #include <math_functions.h>
 #include <bitmap_image.hpp>
 
+
 #define errorHandler(stmt)																					\
 	do {																									\
 		cudaError_t err = stmt;																				\
@@ -40,41 +41,24 @@ computeMSEKernel(int* mse_array, unsigned char* image, unsigned char* kernel, in
 	int stride = 1;
 	int virtual_kernel_mse = 0;
 
-	__shared__ unsigned char image_cache[BLOCK_SIZE_Y * 3 * BLOCK_SIZE_X];
-	__shared__ unsigned char kernel_cache[BLOCK_SIZE_Y * 3 * BLOCK_SIZE_X];
-
-	
-	int virtual_kernel_row_start = threadIdx.y;
+	int virtual_kernel_row_start = row;
 	int virtual_kernel_row_end = virtual_kernel_row_start + kernel_height - 1;
-	int virtual_kernel_col_start = threadIdx.x * stride;
+	int virtual_kernel_col_start = col * stride;
 	int virtual_kernel_col_end = virtual_kernel_row_start + kernel_width - 1;
 
-	// Each thread loads 6(3 + 3) values from its location
-	int cache_index = (threadIdx.y * BLOCK_SIZE_X * threadIdx.x) * 3 + 0;
-	int image_index = (row * image_width + col);
-	int kernel_index = (row * kernel_width + col);
-
-	if (cache_index < BLOCK_SIZE_Y * BLOCK_SIZE_X && image_index < image_width * image_height && kernel_index < kernel_width * kernel_height) {
-		image_cache[cache_index * 3 + 0] = image[image_index * 3 + 0];
-		image_cache[cache_index * 3 + 1] = image[image_index * 3 + 1];
-		image_cache[cache_index * 3 + 2] = image[image_index * 3 + 2];
-		kernel_cache[cache_index * 3 + 0] = kernel[kernel_index * 3 + 0];
-		kernel_cache[cache_index * 3 + 1] = kernel[kernel_index * 3 + 1];
-		kernel_cache[cache_index * 3 + 2] = kernel[kernel_index * 3 + 2];
-	}
-
-	if (virtual_kernel_col_end < BLOCK_SIZE_X && virtual_kernel_row_end < BLOCK_SIZE_Y) {
+	if (virtual_kernel_col_end < image_width && virtual_kernel_row_end < image_height) {
 		for (int kernelCol = 0; kernelCol < kernel_width; kernelCol++) {
 			for (int kernelRow = 0; kernelRow < kernel_height; kernelRow++) {
 
 				int imageRow = virtual_kernel_row_start + kernelRow;
 				int imageCol = virtual_kernel_col_start + kernelCol;
-				int m_r = (int)(image_cache[imageRow * image_width + 0]);
-				int m_g = (int)(image_cache[imageRow * image_width + 1]);
-				int m_b = (int)(image_cache[imageRow * image_width + 2]);
-				int t_r = (int)(kernel_cache[threadIdx.y * kernel_width + 0]);
-				int t_g = (int)(kernel_cache[threadIdx.y * kernel_width + 1]);
-				int t_b = (int)(kernel_cache[threadIdx.y * kernel_width + 2]);
+
+				int m_r = int(image[(imageRow * image_width + imageCol) * 3]);
+				int m_g = int(image[(imageRow * image_width + imageCol) * 3 + 1]);
+				int m_b = int(image[(imageRow * image_width + imageCol) * 3 + 2]);
+				int t_r = int(kernel[(kernelRow * kernel_width + kernelCol) * 3]);
+				int t_g = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 1]);
+				int t_b = int(kernel[(kernelRow * kernel_width + kernelCol) * 3 + 2]);
 				int error = abs(m_r - t_r) + abs(m_g - t_g) + abs(m_b - t_b);
 				virtual_kernel_mse += error;
 			}
@@ -90,8 +74,6 @@ computeMSEKernel(int* mse_array, unsigned char* image, unsigned char* kernel, in
 		}
 	}
 }
-
-
 
 
 /*
@@ -173,11 +155,15 @@ findNumberofOccurances(int* mse_array, int* min_mse, int* mutex, int* num_occura
 int main()
 {
 	bitmap_image main_image("Input Files/col2.bmp");
-	bitmap_image template_image("Input Files/coin.bmp");
+	bitmap_image template_image_0("Input Files/coin_0.bmp");
+	bitmap_image template_image_90("Input Files/coin_90.bmp");
+	bitmap_image template_image_180("Input Files/coin_180.bmp");
+	bitmap_image template_image_270("Input Files/coin_270.bmp");
 
-	initiate_parallel_template_matching(main_image, template_image);
-	wcout << "\n ------- ******************* ------- \n";
-	initiate_serial_template_matching(main_image, template_image);
+	initiate_parallel_template_matching(main_image, template_image_0);
+	initiate_parallel_template_matching(main_image, template_image_90);
+	// wcout << "\n ------- ******************* ------- \n";
+	// initiate_serial_template_matching(main_image, template_image);
 	// device_query();
 	system("pause");
 	return 0;
@@ -263,7 +249,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	errorHandler(cudaMalloc((void **)&d_min_mse, sizeof(int)));
 	errorHandler(cudaMalloc((void **)&d_mutex, sizeof(int)));
 	errorHandler(cudaMalloc((void **)&d_num_occurances, sizeof(int)));
-	errorHandler(cudaMemset(d_min_mse, 20, sizeof(int)));
+	errorHandler(cudaMemset(d_min_mse, 15, sizeof(int)));
 	errorHandler(cudaMemset(d_mutex, 0, sizeof(int)));
 	errorHandler(cudaMemset(d_num_occurances, 0, sizeof(int)));
 	errorHandler(cudaMemcpy(d_main_image, h_main_image, 3 * main_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
@@ -278,9 +264,9 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	dim3 grid_dimensions_2((unsigned int)ceil((float)mse_array_size) / BLOCK_SIZE, 1, 1);
 	dim3 block_dimensions_2(BLOCK_SIZE, 1, 1);
-	// findMinInArrayKernel << <grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, mse_array_size, d_min_mse, d_mutex);
+	findMinInArrayKernel << <grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, mse_array_size, d_min_mse, d_mutex);
 
-	// findNumberofOccurances << < grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, d_min_mse, d_mutex, d_num_occurances);
+	findNumberofOccurances << < grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, d_min_mse, d_mutex, d_num_occurances);
 	errorHandler(cudaGetLastError());
 	errorHandler(cudaEventRecord(stop, NULL));
 	errorHandler(cudaEventSynchronize(stop));
@@ -294,9 +280,9 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
 	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
 	wcout << "[MSE Array Size]:	" << mse_array_size << endl;
-	get_number_of_occurances(h_mse_array, mse_array_size);
-	// wcout << "[Found Minimum]:  " << *h_min_mse << endl;
-	// wcout << "[Number of Occurances]: " << *h_num_occurances + 1 << endl;
+	// get_number_of_occurances(h_mse_array, mse_array_size);
+	wcout << "[Found Minimum]:  " << *h_min_mse << endl;
+	wcout << "[Number of Occurances]: " << *h_num_occurances + 1 << endl;
 	errorHandler(cudaFree(d_main_image));
 	errorHandler(cudaFree(d_template_image));
 	free(h_main_image);
@@ -344,7 +330,7 @@ void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image temp
 			}
 
 			int NORMALIZED_SAD = (int)(SUM_OF_ABSOLUTE_DEVIATIONS / (float)templateSize);
-			
+
 			if (NORMALIZED_SAD < THRESHOLD) {
 				NUM_OCCURANCES++;
 			}
@@ -425,7 +411,7 @@ int get_number_of_occurances(int * arr, unsigned int size)
 	int min = arr[0];
 	int num_of_occurs = 0;
 	ofstream filemy;
-	filemy.open("sex.txt");
+	filemy.open("output.txt");
 
 	for (unsigned int i = 0; i < size; i++) {
 		filemy << arr[i] << "\n";
@@ -437,7 +423,7 @@ int get_number_of_occurances(int * arr, unsigned int size)
 		if (arr[i] == min)
 			num_of_occurs++;
 	}
-	
+
 	wcout << "[Found Minimum]:  " << min << endl;
 	wcout << "[Number of Occurances]: " << num_of_occurs << endl;
 
