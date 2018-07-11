@@ -46,9 +46,9 @@ compute_sad_array_kernel(int* sad_array, unsigned char* image, unsigned char* ke
 				int m_r = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 0]);
 				int m_g = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 1]);
 				int m_b = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 2]);
-				int t_r = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 1]);
-				int t_g = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 1]);
-				int t_b = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 1]);
+				int t_r = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 0]);
+				int t_g = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 1);
+				int t_b = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 2]);
 				int error = abs(m_r - t_r) + abs(m_g - t_g) + abs(m_b - t_b);
 				SAD_RESULT += error;
 			}
@@ -148,7 +148,7 @@ int main()
 	bitmap_image template_image("Input Files/collection_coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
-	wcout << "\n ------- ******************* ------- \n";
+	// wcout << "\n ------- ******************* ------- \n";
 	// initiate_serial_template_matching(main_image, template_image);
 	// device_query();
 	system("pause");
