@@ -152,18 +152,23 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	// Perform the inverse fft on the main signal
 	cufftExecC2C(plan_main, (cufftComplex *)d_main_signal, (cufftComplex *)d_main_signal, CUFFT_INVERSE);
 
-	// Allocate fft results on host
-	cuComplex* h_fft_main_signal = (cufftComplex*)malloc(sizeof(cufftComplex)* main_width * main_height * 3);
-	cuComplex* h_fft_template_signal = (cufftComplex*)malloc(sizeof(cufftComplex)* template_width * template_height * 3);
+	// Copy data back to host
+	cufftComplex * h_correlation_signal;
+	h_correlation_signal = h_padded_main_signal;
+	errorHandler(cudaMemcpy(h_correlation_signal, d_main_signal, NEW_SIZE, cudaMemcpyDeviceToHost));
 
-	cudaMemcpy(h_fft_main_signal, d_main_signal, main_memsize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(h_fft_template_signal, d_template_signal, template_memsize, cudaMemcpyDeviceToHost);
-
-
-
-
-	// cuComplex* h_correlation_signal = (cufftComplex*)malloc(sizeof())
-
+	// Free allocated memory
+	errorHandler(cudaFree(d_main_signal));
+	errorHandler(cudaFree(d_template_signal));
+	errorHandler(cudaFree(d_main_signal_out));
+	errorHandler(cudaFree(d_template_signal_out));
+	free(h_main_image);
+	free(h_template_image);
+	free(h_main_signal);
+	free(h_template_signal);
+	free(h_padded_main_signal);
+	free(h_padded_template_signal);
+	free(h_correlation_signal);
 	return EXIT_SUCCESS;
 }
 
