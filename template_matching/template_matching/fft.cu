@@ -149,6 +149,9 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	printf("Launching ComplexPointwiseMulAndScale<<< >>>\n");
 	ComplexPointwiseMulAndScale((cufftComplex *)d_main_signal_out, (cufftComplex *)d_template_signal_out, NEW_SIZE, 1.0f / NEW_SIZE);
 
+	// Perform the inverse fft on the main signal
+	cufftExecC2C(plan_main, (cufftComplex *)d_main_signal, (cufftComplex *)d_main_signal, CUFFT_INVERSE);
+
 	// Allocate fft results on host
 	cuComplex* h_fft_main_signal = (cufftComplex*)malloc(sizeof(cufftComplex)* main_width * main_height * 3);
 	cuComplex* h_fft_template_signal = (cufftComplex*)malloc(sizeof(cufftComplex)* template_width * template_height * 3);
