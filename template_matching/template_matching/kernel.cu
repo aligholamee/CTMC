@@ -5,6 +5,9 @@
 #include <chrono>
 #include <math_functions.h>
 #include <bitmap_image.hpp>
+#include <cufft.h>
+#include <assert.h>
+#include <cufftXt.h>
 
 #define errorHandler(stmt)																					\
 	do {																									\
@@ -14,12 +17,74 @@
 			return -1; }																 					\
 	} while (0)																								\
 
+inline bool
+sdkCompareL2fe(const float *reference, const float *data,
+	const unsigned int len, const float epsilon)
+{
+	assert(epsilon >= 0);
+
+	float error = 0;
+	float ref = 0;
+
+	for (unsigned int i = 0; i < len; ++i)
+	{
+
+		float diff = reference[i] - data[i];
+		error += diff * diff;
+		ref += reference[i] * reference[i];
+	}
+
+	float normRef = sqrtf(ref);
+
+	if (fabs(ref) < 1e-7)
+	{
+#ifdef _DEBUG
+		std::cerr << "ERROR, reference l2-norm is 0\n";
+#endif
+		return false;
+	}
+
+	float normError = sqrtf(error);
+	error = normError / normRef;
+	bool result = error < epsilon;
+#ifdef _DEBUG
+
+	if (!result)
+	{
+		std::cerr << "ERROR, l2-norm error "
+			<< error << " is greater than epsilon " << epsilon << "\n";
+	}
+
+#endif
+
+	return result;
+}
+
 #define M_PI 3.14159265
 #define BLOCK_SIZE_X 32
 #define BLOCK_SIZE_Y 32
 #define BLOCK_SIZE 1024
+const int GPU_COUNT = 1;
 
 using namespace std;
+
+// Complex data type
+typedef float2 Complex;
+
+static __device__ __host__ inline Complex ComplexAdd(Complex, Complex);
+static __device__ __host__ inline Complex ComplexScale(Complex, float);
+static __device__ __host__ inline Complex ComplexMul(Complex, Complex);
+static __global__ void ComplexPointwiseMulAndScale(cufftComplex *, cufftComplex *, int, float);
+
+//Kernel for GPU
+void multiplyCoefficient(cudaLibXtDesc *, cudaLibXtDesc *, int, float, int);
+
+// Filtering functions
+void Convolve(const Complex *, int, const Complex *, int, Complex *);
+
+// Padding functions
+int PadData(const Complex *, Complex **, int,
+	const Complex *, Complex **, int);
 
 int initiate_parallel_template_matching(bitmap_image, bitmap_image);
 void initiate_serial_template_matching(bitmap_image, bitmap_image);
@@ -27,128 +92,15 @@ void device_query();
 void extract_array(unsigned char*, unsigned int, bitmap_image);
 int get_number_of_occurances(int * arr, unsigned int size);
 
-/*
-*	CUDA Kernel to compute MSEs
-*/
-__global__ void
-compute_sad_array_kernel(int* sad_array, unsigned char* image, unsigned char* kernel, int sad_array_size, int image_width, int image_height, int kernel_width, int kernel_height, int kernel_size)
-{
-	int row = blockIdx.y * blockDim.y + threadIdx.y;
-	int col = blockIdx.x * blockDim.x + threadIdx.x;
-	int SAD_RESULT = 0;
-
-	if (row < image_height && col < image_width) {
-		#pragma unroll 4
-		for (int v_row = 0; v_row < kernel_height; v_row++) {
-			#pragma unroll 4
-			for (int v_col = 0; v_col < kernel_width; v_col++) {
-
-				int m_r = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 0]);
-				int m_g = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 1]);
-				int m_b = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 2]);
-				int t_r = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 0]);
-				int t_g = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 1);
-				int t_b = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 2]);
-				int error = abs(m_r - t_r) + abs(m_g - t_g) + abs(m_b - t_b);
-				SAD_RESULT += error;
-			}
-		}
-
-		int NORMALIZED_SAD = (int)(SAD_RESULT / (float)kernel_size);
-
-		__syncthreads();
-
-		int my_index_in_sad_array = row * image_width + col;
-		if (my_index_in_sad_array < sad_array_size) {
-			sad_array[my_index_in_sad_array] = NORMALIZED_SAD;
-		}
-	}
-}
 
 
-/*
-*	CUDA Kernel to compute the minimum number in an array
-*/
-__global__ void
-findMinInArrayKernel(int* mse_array, int mse_array_size, int* min_mse, int* mutex)
-{
-	unsigned int tId = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int stride = gridDim.x * blockDim.x;
-	unsigned int offset = 0;
-
-	__shared__ int cache[BLOCK_SIZE];
-
-	int temp = 5000;
-	while (tId + offset < mse_array_size) {
-		temp = fminf(temp, mse_array[tId + offset]);
-		offset += stride;
-	}
-
-	cache[threadIdx.x] = temp;
-
-	__syncthreads();
-
-	unsigned int i = blockDim.x / 2;
-	while (i != 0) {
-		if (threadIdx.x < i) {
-			cache[threadIdx.x] = fminf(cache[threadIdx.x], cache[threadIdx.x + i]);
-		}
-
-		__syncthreads();
-		i /= 2;
-	}
-
-	// Update global min for each block
-	if (threadIdx.x == 0) {
-
-		// Lock
-		while (atomicCAS(mutex, 0, 1) != 0);
-
-		*min_mse = fminf(*min_mse, cache[0]);
-
-		// Unlock
-		atomicExch(mutex, 0);
-	}
-}
-
-__global__ void
-findNumberofOccurances(int* mse_array, int* min_mse, int* mutex, int* num_occurances)
-{
-	unsigned int tId = threadIdx.x + blockIdx.x * blockDim.x;
-
-	__shared__ int cache[BLOCK_SIZE];
-
-	cache[threadIdx.x] = mse_array[tId];
-
-	if (threadIdx.x == 0)
-		cache[0] = 0;
-
-	__syncthreads();
-
-	if (cache[threadIdx.x] == *min_mse)
-		atomicAdd(&cache[0], 1);
-
-
-	__syncthreads();
-	// Update global occurance for each block
-	if (threadIdx.x == 0) {
-
-		// Lock
-		while (atomicCAS(mutex, 0, 1) != 0);
-
-		atomicAdd(num_occurances, cache[0]);
-
-		// Unlock
-		atomicExch(mutex, 0);
-	}
-}
 int main()
 {
 	bitmap_image main_image("Input Files/collection.bmp");
 	bitmap_image template_image("Input Files/collection_coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
-	// wcout << "\n ------- ******************* ------- \n";
+	wcout << "\n ------- ******************* ------- \n";
 	// initiate_serial_template_matching(main_image, template_image);
 	// device_query();
 	system("pause");
@@ -157,6 +109,19 @@ int main()
 
 int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image template_image)
 {
+
+	printf("\n[simpleCUFFT_MGPU] is starting...\n\n");
+
+	int GPU_N;
+	cudaGetDeviceCount(&GPU_N);
+
+	if (GPU_N < GPU_COUNT)
+	{
+		printf("No. of GPU on node %d\n", GPU_N);
+		printf("Two GPUs are required to run simpleCUFFT_MGPU sample code\n");
+		return -1;
+	}
+
 	// Get sizes
 	int main_width = main_image.width();
 	int main_height = main_image.height();
@@ -168,33 +133,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int width_difference = main_width - template_width;
 	int mse_array_size = (height_difference + 1) * (width_difference + 1);
 
-	// Define host pointers
-	unsigned char* h_main_image;
-	unsigned char* h_template_image;
-	int* h_mse_array;
-	int* h_min_mse;
-	int* h_num_occurances;
-
-	// Define device pointers
-	unsigned char* d_main_image;
-	unsigned char* d_template_image;
-	int* d_mse_array;
-	int* d_min_mse;
-	int* d_num_occurances;
-	int* d_mutex;
-
-	// CUDA time handling
-	cudaEvent_t start;
-	cudaEvent_t stop;
-	float elapsed_time = 0.0f;
-
-	// Host allocation
-
-	/*
-	Extract Matrices
-	*/
-
-	h_main_image = new unsigned char[3 * main_size];
+	unsigned char* h_main_image = new unsigned char[3 * main_size];
 
 	for (int col = 0; col < main_width; col++) {
 		for (int row = 0; row < main_height; row++) {
@@ -207,7 +146,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 		}
 	}
 
-	h_template_image = new unsigned char[3 * template_size];
+	unsigned char* h_template_image = new unsigned char[3 * template_size];
 
 	for (int col = 0; col < template_width; col++) {
 		for (int row = 0; row < template_height; row++) {
@@ -220,198 +159,314 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 		}
 	}
 
-	/*
-	*************************
-	*/
+	Complex* h_main_signal = (Complex *)malloc(sizeof(Complex) * main_width * main_height * 3);
+	Complex* h_template_signal = (Complex *)malloc(sizeof(Complex) * template_width * template_height * 3);
+	long unsigned int main_signal_size = main_width * main_height * 3;
+	long unsigned int template_signal_size = template_width * template_height * 3;
 
-	h_mse_array = new int[mse_array_size];
-	h_min_mse = new int[1];
-	h_num_occurances = new int[1];
-
-	// Device allocation
-	errorHandler(cudaMalloc((void **)&d_main_image, 3 * main_size * sizeof(unsigned char)));
-	errorHandler(cudaMalloc((void **)&d_template_image, 3 * template_size * sizeof(unsigned char)));
-	errorHandler(cudaMalloc((void **)&d_mse_array, mse_array_size * sizeof(int)));
-	errorHandler(cudaMalloc((void **)&d_min_mse, sizeof(int)));
-	errorHandler(cudaMalloc((void **)&d_mutex, sizeof(int)));
-	errorHandler(cudaMalloc((void **)&d_num_occurances, sizeof(int)));
-	errorHandler(cudaMemset(d_min_mse, 20, sizeof(int)));
-	errorHandler(cudaMemset(d_mutex, 0, sizeof(int)));
-	errorHandler(cudaMemset(d_num_occurances, 0, sizeof(int)));
-	errorHandler(cudaMemcpy(d_main_image, h_main_image, 3 * main_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
-	errorHandler(cudaMemcpy(d_template_image, h_template_image, 3 * template_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
-	errorHandler(cudaEventCreate(&start));
-	errorHandler(cudaEventCreate(&stop));
-	errorHandler(cudaEventRecord(start));
-
-	dim3 grid_dimensions((unsigned int)ceil((float)(main_width) / BLOCK_SIZE_X), (unsigned int)ceil((float)(main_height) / BLOCK_SIZE_Y), 1);
-	dim3 block_dimensions(BLOCK_SIZE_X, BLOCK_SIZE_Y, 1);
-	compute_sad_array_kernel << <grid_dimensions, block_dimensions >> > (d_mse_array, d_main_image, d_template_image, mse_array_size, main_width, main_height, template_width, template_height, template_size);
-
-	dim3 grid_dimensions_2((unsigned int)ceil((float)mse_array_size) / BLOCK_SIZE, 1, 1);
-	dim3 block_dimensions_2(BLOCK_SIZE, 1, 1);
-	findMinInArrayKernel << <grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, mse_array_size, d_min_mse, d_mutex);
-
-	findNumberofOccurances << < grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, d_min_mse, d_mutex, d_num_occurances);
-	errorHandler(cudaGetLastError());
-	errorHandler(cudaEventRecord(stop, NULL));
-	errorHandler(cudaEventSynchronize(stop));
-	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
-	errorHandler(cudaMemcpy(h_mse_array, d_mse_array, mse_array_size * sizeof(int), cudaMemcpyDeviceToHost));
-	errorHandler(cudaMemcpy(h_min_mse, d_min_mse, sizeof(int), cudaMemcpyDeviceToHost));
-	errorHandler(cudaMemcpy(h_num_occurances, d_num_occurances, sizeof(int), cudaMemcpyDeviceToHost));
-
-	wcout << "[[[ Parallel Computation Results ]]] " << endl << endl;
-	wcout << "Elapsed time in msec = " << (int)(elapsed_time) << endl;
-	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
-	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
-	wcout << "[MSE Array Size]:	" << mse_array_size << endl;
-	// get_number_of_occurances(h_mse_array, mse_array_size);
-	wcout << "[Found Minimum]:  " << *h_min_mse << endl;
-	wcout << "[Number of Occurances]: " << *h_num_occurances << endl;
-	errorHandler(cudaFree(d_main_image));
-	errorHandler(cudaFree(d_template_image));
-	free(h_main_image);
-	free(h_template_image);
-	return EXIT_SUCCESS;
-}
-
-void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image templateImage)
-{
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-	int main_width = mainImage.width();
-	int main_height = mainImage.height();
-	int template_width = templateImage.width();
-	int template_height = templateImage.height();
-
-	int templateSize = template_height * template_width;
-
-	int THRESHOLD = 20;
-	unsigned int NUM_OCCURANCES = 0;
-	int FOUND_MINIMUM = 100000;
-	int NUM_OF_ZEROS = 0;
-
-	wcout << "[[[ Initiated Serial Template Matching ]]] " << endl;
-
-	for (int col = 0; col < main_width - template_width; col++) {
-		for (int row = 0; row < main_height - template_height; row++) {
-
-			int SUM_OF_ABSOLUTE_DEVIATIONS = 0;
-
-			for (int j = 0; j < template_width; j++) {
-				for (int i = 0; i < template_height; i++) {
-
-					int mRow = row + i;
-					int mCol = col + j;
-
-					rgb_t m_color;
-					rgb_t t_color;
-
-					mainImage.get_pixel(mCol, mRow, m_color);
-					templateImage.get_pixel(j, i, t_color);
-
-					SUM_OF_ABSOLUTE_DEVIATIONS += abs(m_color.red - t_color.red) + abs(m_color.green - t_color.green) + abs(m_color.blue - t_color.blue);
-
-				}
-			}
-
-			int NORMALIZED_SAD = (int)(SUM_OF_ABSOLUTE_DEVIATIONS / (float)templateSize);
-
-			if (NORMALIZED_SAD < THRESHOLD) {
-				NUM_OCCURANCES++;
-			}
-
-			if (NORMALIZED_SAD < FOUND_MINIMUM) {
-				FOUND_MINIMUM = (int)NORMALIZED_SAD;
-			}
-
-			if (NORMALIZED_SAD == 0)
-				NUM_OF_ZEROS++;
-
+	for (int y = 0; y < main_height; y++) {
+		for (int x = 0; x < main_width; x++) {
+			h_main_signal[(y * main_width + x) * 3 + 0].x = (double)h_main_image[(y * main_width + x) * 3 + 0];
+			h_main_signal[(y * main_width + x) * 3 + 1].x = (double)h_main_image[(y * main_width + x) * 3 + 1];
+			h_main_signal[(y * main_width + x) * 3 + 2].x = (double)h_main_image[(y * main_width + x) * 3 + 2];
+			h_main_signal[(y * main_width + x) * 3 + 0].y = 0;
+			h_main_signal[(y * main_width + x) * 3 + 1].y = 0;
+			h_main_signal[(y * main_width + x) * 3 + 2].y = 0;
 		}
 	}
 
-	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	wcout << "[[[ Serial Computation Results ]]] " << endl << endl;
-	wcout << "Elapsed time in msec = " << chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << endl;
-	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
-	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
-	wcout << "[Found Minimum]:  " << FOUND_MINIMUM << endl;
-	wcout << "[Number of Occurances]: " << NUM_OCCURANCES << endl;
-}
+	for (int y = 0; y < template_height; y++) {
+		for (int x = 0; x < template_width; x++) {
+			h_template_signal[(y * template_width + x) * 3 + 0].x = (double)h_template_image[(y * template_width + x) * 3 + 0];
+			h_template_signal[(y * template_width + x) * 3 + 1].x = (double)h_template_image[(y * template_width + x) * 3 + 1];
+			h_template_signal[(y * template_width + x) * 3 + 2].x = (double)h_template_image[(y * template_width + x) * 3 + 2];
+			h_template_signal[(y * template_width + x) * 3 + 0].y = 0;
+			h_template_signal[(y * template_width + x) * 3 + 1].y = 0;
+			h_template_signal[(y * template_width + x) * 3 + 2].y = 0;
+		}
+	}
 
-void device_query()
-{
-	const int kb = 1024;
-	const int mb = kb * kb;
-	wcout << "NBody.GPU" << endl << "=========" << endl << endl;
 
-	wcout << "CUDA version:   v" << CUDART_VERSION << endl;
+	// Pad image signals
+	Complex *h_padded_main_signal;
+	Complex *h_padded_template_signal;
 
-	int devCount;
-	cudaGetDeviceCount(&devCount);
-	wcout << "CUDA Devices: " << endl << endl;
+	int NEW_SIZE = PadData(h_main_signal, &h_padded_main_signal, main_signal_size, h_template_signal, &h_padded_template_signal, template_signal_size);
 
-	for (int i = 0; i < devCount; ++i)
+	cufftResult result;
+	cufftHandle plan_input;
+	cufftCreate(&plan_input);
+
+	// cufftXtSetGPUs() - Define which GPUs to use
+	int nGPUs = 2;
+	int *whichGPUs;
+	whichGPUs = (int*)malloc(sizeof(int) * nGPUs);
+
+	// Iterate all device combinations to see if a supported combo exists
+	for (int i = 0; i < GPU_N; i++)
 	{
-		cudaDeviceProp props;
-		cudaGetDeviceProperties(&props, i);
-		wcout << i << ": " << props.name << ": " << props.major << "." << props.minor << endl;
-		wcout << "  Global memory:   " << props.totalGlobalMem / mb << "mb" << endl;
-		wcout << "  Shared memory:   " << props.sharedMemPerBlock / kb << "kb" << endl;
-		wcout << "  Constant memory: " << props.totalConstMem / kb << "kb" << endl;
-		wcout << "  Block registers: " << props.regsPerBlock << endl << endl;
+		for (int j = i + 1; j < GPU_N; j++)
+		{
+			whichGPUs[0] = i;
+			whichGPUs[1] = j;
+			result = cufftXtSetGPUs(plan_input, nGPUs, whichGPUs);
 
-		wcout << "  Warp size:         " << props.warpSize << endl;
-		wcout << "  Threads per block: " << props.maxThreadsPerBlock << endl;
-		wcout << "  Max block dimensions: [ " << props.maxThreadsDim[0] << ", " << props.maxThreadsDim[1] << ", " << props.maxThreadsDim[2] << " ]" << endl;
-		wcout << "  Max grid dimensions:  [ " << props.maxGridSize[0] << ", " << props.maxGridSize[1] << ", " << props.maxGridSize[2] << " ]" << endl;
-		wcout << "  Concurrent Kernels:		" << props.concurrentKernels;
-
-		wcout << endl;
-	}
-}
-
-void extract_array(unsigned char* pixels, unsigned int pixels_size, bitmap_image image)
-{
-	int image_width = image.width();
-	int image_height = image.height();
-
-	pixels = new unsigned char[3 * pixels_size];
-
-	for (int col = 0; col < image_width; col++) {
-		for (int row = 0; row < image_height; row++) {
-			rgb_t colors;
-
-			image.get_pixel(col, row, colors);
-			pixels[(row * image_width + col) * 3 + 0] = colors.red;
-			pixels[(row * image_width + col) * 3 + 1] = colors.green;
-			pixels[(row * image_width + col) * 3 + 2] = colors.blue;
-		}
-	}
-
-}
-
-int get_number_of_occurances(int * arr, unsigned int size)
-{
-	int min = arr[0];
-	int num_of_occurs = 0;
-	ofstream filemy;
-	filemy.open("output.txt");
-
-	for (unsigned int i = 0; i < size; i++) {
-		filemy << arr[i] << "\n";
-		if (arr[i] < min) {
-			num_of_occurs = 1;
-			min = arr[i];
+			if (result == CUFFT_INVALID_DEVICE) { continue; }
+			else if (result == CUFFT_SUCCESS) { break; }
+			else { printf("cufftXtSetGPUs failed\n"); exit(EXIT_FAILURE); }
 		}
 
-		if (arr[i] == min)
-			num_of_occurs++;
+		if (result == CUFFT_SUCCESS) { break; }
 	}
 
-	wcout << "[Found Minimum]:  " << min << endl;
-	wcout << "[Number of Occurances]: " << num_of_occurs << endl;
+	if (result == CUFFT_INVALID_DEVICE)
+	{
+		printf("This sample requires two GPUs on the same board.\n");
+		printf("No such board was found. Waiving sample.\n");
+		return -1;
+	}
 
-	return num_of_occurs;
+	//Print the device information to run the code
+	for (int i = 0; i < nGPUs; i++)
+	{
+		cudaDeviceProp deviceProp;
+		cudaGetDeviceProperties(&deviceProp, whichGPUs[i]);
+		printf("GPU Device %d: \"%s\" with compute capability %d.%d\n", whichGPUs[i], deviceProp.name, deviceProp.major, deviceProp.minor);
+
+	}
+
+	size_t* worksize;
+	worksize = (size_t*)malloc(sizeof(size_t) * nGPUs);
+
+	// cufftMakePlan1d() - Create the plan
+	result = cufftMakePlan1d(plan_input, NEW_SIZE, CUFFT_C2C, 1, worksize);
+	if (result != CUFFT_SUCCESS) { printf("*MakePlan* failed\n"); exit(EXIT_FAILURE); }
+
+	// cufftMakePlan1d() - Create the plan
+	result = cufftMakePlan1d(plan_input, NEW_SIZE, CUFFT_C2C, 1, worksize);
+	if (result != CUFFT_SUCCESS) { printf("*MakePlan* failed\n"); exit(EXIT_FAILURE); }
+
+	// cufftXtMalloc() - Malloc data on multiple GPUs
+	cudaLibXtDesc *d_signal;
+	result = cufftXtMalloc(plan_input, (cudaLibXtDesc **)&d_signal, CUFFT_XT_FORMAT_INPLACE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMalloc failed\n"); exit(EXIT_FAILURE); }
+	cudaLibXtDesc *d_out_signal;
+	result = cufftXtMalloc(plan_input, (cudaLibXtDesc **)&d_out_signal, CUFFT_XT_FORMAT_INPLACE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMalloc failed\n"); exit(EXIT_FAILURE); }
+	cudaLibXtDesc *d_filter_kernel;
+	result = cufftXtMalloc(plan_input, (cudaLibXtDesc **)&d_filter_kernel, CUFFT_XT_FORMAT_INPLACE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMalloc failed\n"); exit(EXIT_FAILURE); }
+	cudaLibXtDesc *d_out_filter_kernel;
+	result = cufftXtMalloc(plan_input, (cudaLibXtDesc **)&d_out_filter_kernel, CUFFT_XT_FORMAT_INPLACE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMalloc failed\n"); exit(EXIT_FAILURE); }
+
+	// cufftXtMemcpy() - Copy data from host to multiple GPUs
+	result = cufftXtMemcpy(plan_input, d_signal, h_padded_main_signal, CUFFT_COPY_HOST_TO_DEVICE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMemcpy failed\n"); exit(EXIT_FAILURE); }
+	result = cufftXtMemcpy(plan_input, d_filter_kernel, h_padded_main_signal, CUFFT_COPY_HOST_TO_DEVICE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMemcpy failed\n"); exit(EXIT_FAILURE); }
+
+	// cufftXtExecDescriptorC2C() - Execute FFT on data on multiple GPUs
+	result = cufftXtExecDescriptorC2C(plan_input, d_signal, d_signal, CUFFT_FORWARD);
+	if (result != CUFFT_SUCCESS) { printf("*XtExecC2C  failed\n"); exit(EXIT_FAILURE); }
+	result = cufftXtExecDescriptorC2C(plan_input, d_filter_kernel, d_filter_kernel, CUFFT_FORWARD);
+	if (result != CUFFT_SUCCESS) { printf("*XtExecC2C  failed\n"); exit(EXIT_FAILURE); }
+
+	// cufftXtMemcpy() - Copy the data to natural order on GPUs
+	result = cufftXtMemcpy(plan_input, d_out_signal, d_signal, CUFFT_COPY_DEVICE_TO_DEVICE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMemcpy failed\n"); exit(EXIT_FAILURE); }
+	result = cufftXtMemcpy(plan_input, d_out_filter_kernel, d_filter_kernel, CUFFT_COPY_DEVICE_TO_DEVICE);
+	if (result != CUFFT_SUCCESS) { printf("*XtMemcpy failed\n"); exit(EXIT_FAILURE); }
+
+	printf("\n\nValue of Library Descriptor\n");
+	printf("Number of GPUs %d\n", d_out_signal->descriptor->nGPUs);
+	printf("Device id  %d %d\n", d_out_signal->descriptor->GPUs[0], d_out_signal->descriptor->GPUs[1]);
+	printf("Data size on GPU %ld %ld\n", (long)(d_out_signal->descriptor->size[0] / sizeof(cufftComplex)), (long)(d_out_signal->descriptor->size[1] / sizeof(cufftComplex)));
+
+	//Multiply the coefficients together and normalize the result
+	printf("Launching ComplexPointwiseMulAndScale<<< >>>\n");
+	multiplyCoefficient(d_out_signal, d_out_filter_kernel, NEW_SIZE, 1.0f / NEW_SIZE, nGPUs);
+
+	// cufftXtExecDescriptorC2C() - Execute inverse  FFT on data on multiple GPUs
+	printf("Transforming signal back cufftExecC2C\n");
+	result = cufftXtExecDescriptorC2C(plan_input, d_out_signal, d_out_signal, CUFFT_INVERSE);
+	if (result != CUFFT_SUCCESS) { printf("*XtExecC2C  failed\n"); exit(EXIT_FAILURE); }
+
+	// Create host pointer pointing to padded signal
+	Complex *h_convolved_signal = h_padded_main_signal;
+
+	// Allocate host memory for the convolution result
+	Complex *h_convolved_signal_ref = (Complex *)malloc(sizeof(Complex) * main_signal_size);
+
+	// cufftXtMemcpy() - Copy data from multiple GPUs to host
+	result = cufftXtMemcpy(plan_input, h_convolved_signal, d_out_signal, CUFFT_COPY_DEVICE_TO_HOST);
+	if (result != CUFFT_SUCCESS) { printf("*XtMemcpy failed\n"); exit(EXIT_FAILURE); }
+
+	// Convolve on the host
+	Convolve(h_main_signal, main_signal_size, h_template_signal,
+		template_signal_size, h_convolved_signal_ref);
+
+	// Compare CPU and GPU result
+	bool bTestResult = sdkCompareL2fe((float *)h_convolved_signal_ref,
+		(float *)h_convolved_signal, 2 * main_signal_size,
+		1e-5f);
+	printf("\nvalue of TestResult %d\n", bTestResult);
+
+	// Cleanup memory
+	free(whichGPUs);
+	free(worksize);
+	free(h_main_signal);
+	free(h_template_signal);
+	free(h_padded_main_signal);
+	free(h_padded_template_signal);
+	free(h_convolved_signal_ref);
+
+	// cudaXtFree() - Free GPU memory
+	result = cufftXtFree(d_signal);
+	if (result != CUFFT_SUCCESS) { printf("*XtFree failed\n"); exit(EXIT_FAILURE); }
+	result = cufftXtFree(d_filter_kernel);
+	if (result != CUFFT_SUCCESS) { printf("*XtFree failed\n"); exit(EXIT_FAILURE); }
+	result = cufftXtFree(d_out_signal);
+	if (result != CUFFT_SUCCESS) { printf("*XtFree failed\n"); exit(EXIT_FAILURE); }
+	result = cufftXtFree(d_out_filter_kernel);
+	if (result != CUFFT_SUCCESS) { printf("*XtFree failed\n"); exit(EXIT_FAILURE); }
+
+	// cufftDestroy() - Destroy FFT plan
+	result = cufftDestroy(plan_input);
+	if (result != CUFFT_SUCCESS) { printf("cufftDestroy failed: code %d\n", (int)result); exit(EXIT_FAILURE); }
+
+	// cudaDeviceReset causes the driver to clean up all state. While
+	// not mandatory in normal operation, it is good practice.  It is also
+	// needed to ensure correct operation when the application is being
+	// profiled. Calling cudaDeviceReset causes all profile data to be
+	// flushed before the application exitsits
+	cudaDeviceReset();
+	exit(bTestResult ? EXIT_SUCCESS : EXIT_FAILURE);
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+// Function for padding original data
+//////////////////////////////////////////////////////////////////////////////////
+int PadData(const Complex *signal, Complex **padded_signal, int signal_size,
+	const Complex *filter_kernel, Complex **padded_filter_kernel, int filter_kernel_size)
+{
+	int minRadius = filter_kernel_size / 2;
+	int maxRadius = filter_kernel_size - minRadius;
+	int new_size = signal_size + maxRadius;
+
+	// Pad signal
+	Complex *new_data = (Complex *)malloc(sizeof(Complex) * new_size);
+	memcpy(new_data + 0, signal, signal_size * sizeof(Complex));
+	memset(new_data + signal_size, 0, (new_size - signal_size) * sizeof(Complex));
+	*padded_signal = new_data;
+
+	// Pad filter
+	new_data = (Complex *)malloc(sizeof(Complex) * new_size);
+	memcpy(new_data + 0, filter_kernel + minRadius, maxRadius * sizeof(Complex));
+	memset(new_data + maxRadius, 0, (new_size - filter_kernel_size) * sizeof(Complex));
+	memcpy(new_data + new_size - minRadius, filter_kernel, minRadius * sizeof(Complex));
+	*padded_filter_kernel = new_data;
+
+	return new_size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Filtering operations - Computing Convolution on the host
+////////////////////////////////////////////////////////////////////////////////
+void Convolve(const Complex *signal, int signal_size,
+	const Complex *filter_kernel, int filter_kernel_size,
+	Complex *filtered_signal)
+{
+	int minRadius = filter_kernel_size / 2;
+	int maxRadius = filter_kernel_size - minRadius;
+
+	// Loop over output element indices
+	for (int i = 0; i < signal_size; ++i)
+	{
+		filtered_signal[i].x = filtered_signal[i].y = 0;
+
+		// Loop over convolution indices
+		for (int j = -maxRadius + 1; j <= minRadius; ++j)
+		{
+			int k = i + j;
+
+			if (k >= 0 && k < signal_size)
+			{
+				filtered_signal[i] = ComplexAdd(filtered_signal[i], ComplexMul(signal[k], filter_kernel[minRadius - j]));
+			}
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  Launch Kernel on multiple GPU
+////////////////////////////////////////////////////////////////////////////////
+void  multiplyCoefficient(cudaLibXtDesc *d_signal, cudaLibXtDesc *d_filter_kernel,
+	int new_size, float val, int nGPUs)
+{
+	int device;
+	//Launch the ComplexPointwiseMulAndScale<<< >>> kernel on multiple GPU
+	for (int i = 0; i < nGPUs; i++)
+	{
+		device = d_signal->descriptor->GPUs[i];
+
+		//Set device
+		cudaSetDevice(device);
+
+		//Perform GPU computations
+		ComplexPointwiseMulAndScale << <32, 256 >> >((cufftComplex*)d_signal->descriptor->data[i],
+			(cufftComplex*)d_filter_kernel->descriptor->data[i],
+			int(d_signal->descriptor->size[i] / sizeof(cufftComplex)), val);
+	}
+
+	// Wait for device to finish all operation
+	for (int i = 0; i< nGPUs; i++)
+	{
+		device = d_signal->descriptor->GPUs[i];
+		cudaSetDevice(device);
+		cudaDeviceSynchronize();
+	}
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Complex operations
+////////////////////////////////////////////////////////////////////////////////
+
+// Complex addition
+static __device__ __host__ inline Complex ComplexAdd(Complex a, Complex b)
+{
+	Complex c;
+	c.x = a.x + b.x;
+	c.y = a.y + b.y;
+	return c;
+}
+
+// Complex scale
+static __device__ __host__ inline Complex ComplexScale(Complex a, float s)
+{
+	Complex c;
+	c.x = s * a.x;
+	c.y = s * a.y;
+	return c;
+}
+
+// Complex multiplication
+static __device__ __host__ inline Complex ComplexMul(Complex a, Complex b)
+{
+	Complex c;
+	c.x = a.x * b.x - a.y * b.y;
+	c.y = a.x * b.y + a.y * b.x;
+	return c;
+}
+// Complex pointwise multiplication
+static __global__ void ComplexPointwiseMulAndScale(cufftComplex *a, cufftComplex *b, int size, float scale)
+{
+	const int numThreads = blockDim.x * gridDim.x;
+	const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
+	for (int i = threadID; i < size; i += numThreads)
+	{
+		a[i] = ComplexScale(ComplexMul(a[i], b[i]), scale);
+	}
+}
+

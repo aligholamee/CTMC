@@ -408,3 +408,13 @@ C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.
 C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\string
 C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\xstring_insert.h
 C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\vector
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include\cufft.h
+c:\program files\nvidia gpu computing toolkit\cuda\v9.1\include\cuComplex.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.14393.0\ucrt\math.h
+c:\program files\nvidia gpu computing toolkit\cuda\v9.1\include\vector_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v9.1\include\driver_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v9.1\include\library_types.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.14393.0\ucrt\assert.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include\cufftXt.h
+c:\program files\nvidia gpu computing toolkit\cuda\v9.1\include\cudalibxt.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include\cuda_runtime.h
