@@ -28,6 +28,8 @@ static __device__ __host__ inline Complex ComplexAdd(Complex, Complex);
 static __device__ __host__ inline Complex ComplexScale(Complex, float);
 static __device__ __host__ inline Complex ComplexMul(Complex, Complex);
 static __global__ void ComplexPointwiseMulAndScale(cufftComplex *, cufftComplex *, int, float);
+static __global__ inline void ComplexNormalizeComplexPointwiseMulAndScale(cufftComplex * inData, cufftComplex *outData, int size);
+static __global__ inline void ComplexConjugate(cufftComplex * inData, cufftComplex *outData, int size);
 
 inline bool
 sdkCompareL2fe(const float* reference, const float* data,
@@ -77,7 +79,7 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size);
 
 int main()
 {
-	bitmap_image main_image("Input Files/collection2.bmp");
+	bitmap_image main_image("Input Files/collection.bmp");
 	bitmap_image template_image("Input Files/collection_coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
@@ -174,14 +176,23 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	cufftExecC2C(plan_main, (cufftComplex *)d_main_signal, (cufftComplex *)d_main_signal_out, CUFFT_FORWARD);
 	cufftExecC2C(plan_template, (cufftComplex *)d_template_signal, (cufftComplex *)d_template_signal_out, CUFFT_FORWARD);
 
-	// Multiply the coefficients together and normalize the result
-	printf("Launching ComplexPointwiseMulAndScale<<< >>>\n");
+
 	dim3 gridDimensions((unsigned int)(ceil(NEW_SIZE / (float)BLOCK_SIZE)), 1, 1);
 	dim3 blockDimensions(BLOCK_SIZE, 1, 1);
+
+	// Convert to complex conjugate
+	cout << "Launching ComplexConjugate<<< >>>\n";
+	ComplexConjugate << <gridDimensions, blockDimensions >> > ((cufftComplex *)d_template_signal, (cufftComplex *)d_template_signal, NEW_SIZE);
+	cout << "Successfully completed complex conjugate" << endl;
+
+	// Multiply the coefficients together and normalize the result
+	printf("Launching ComplexPointwiseMulAndScale<<< >>>\n");
 
 	ComplexPointwiseMulAndScale << <gridDimensions, blockDimensions >> >((cufftComplex *)d_main_signal_out, (cufftComplex *)d_template_signal_out, NEW_SIZE, 1.0f / NEW_SIZE);
 	cout << "Successfully completed complex pointwise mul and scale" << endl;
 	errorHandler(cudaGetLastError());
+
+	ComplexNormalizeComplexPointwiseMulAndScale << < gridDimensions, blockDimensions >> > ((cufftComplex *)d_main_signal_out, (cufftComplex *)d_main_signal_out, NEW_SIZE);
 
 	// Perform the inverse fft on the main signal
 	cufftExecC2C(plan_main, (cufftComplex *)d_main_signal_out, (cufftComplex *)d_inversed, CUFFT_INVERSE);
@@ -190,12 +201,12 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	cufftComplex * h_correlation_signal;
 	h_correlation_signal = h_padded_main_signal;
 	errorHandler(cudaMemcpy(h_correlation_signal, d_inversed, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyDeviceToHost));
-
-	for (int i = 0; i < NEW_SIZE; i++) {
-		h_correlation_signal[i].x = abs(h_correlation_signal[i].x);
-		h_correlation_signal[i].y = abs(h_correlation_signal[i].y);
-	}
 	
+	// Normalize the convolution result
+	for (int i = 0; i < NEW_SIZE; i++) {
+		h_correlation_signal[i].x = h_correlation_signal[i].x / (float)NEW_SIZE;
+	}
+
 	ofstream convolveResult;
 	convolveResult.open("convRes.txt");
 
@@ -307,6 +318,27 @@ static __global__ void ComplexPointwiseMulAndScale(cufftComplex *a, cufftComplex
 	for (int i = threadID; i < size; i += numThreads)
 	{
 		a[i] = ComplexScale(ComplexMul(a[i], b[i]), scale);
+	}
+}
+
+// Complex conjugate
+static __global__ inline void ComplexConjugate(cufftComplex * inData, cufftComplex *outData, int size)
+{
+	const int numThreads = blockDim.x * gridDim.x;
+	const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
+	for (int i = threadID; i < size; i += numThreads) {
+		outData[i].x = inData[i].x;
+		outData[i].y = -1 * inData[i].y;
+	}
+}
+
+static __global__ inline void ComplexNormalizeComplexPointwiseMulAndScale(cufftComplex * inData, cufftComplex *outData, int size)
+{
+	const int numThreads = blockDim.x * gridDim.x;
+	const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
+	for (int i = threadID; i < size; i += numThreads) {
+		outData[i].x = abs(inData[i].x / sqrt(pow(inData[i].x, 2) + pow(inData[i].y, 2)));
+		outData[i].y = abs(inData[i].y / sqrt(pow(inData[i].x, 2) + pow(inData[i].y, 2)));
 	}
 }
 
