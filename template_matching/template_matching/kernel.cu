@@ -96,57 +96,49 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int template_height = template_image.height();
 	int template_size = template_width * template_height;
 
-	unsigned char* h_main_image = new unsigned char[3 * main_size];
+	// Convert to grayscale
+	main_image.convert_to_grayscale();
+	template_image.convert_to_grayscale();
+
+	unsigned char* h_main_image = new unsigned char[main_size];
 
 	for (int col = 0; col < main_width; col++) {
 		for (int row = 0; row < main_height; row++) {
-			rgb_t colors;
+			rgb_t color;
 
-			main_image.get_pixel(col, row, colors);
-			h_main_image[(row * main_width + col) * 3 + 0] = colors.red;
-			h_main_image[(row * main_width + col) * 3 + 1] = colors.green;
-			h_main_image[(row * main_width + col) * 3 + 2] = colors.blue;
+			main_image.get_pixel(col, row, color);
+			h_main_image[row * main_width + col] = color.red;
 		}
 	}
 
-	unsigned char* h_template_image = new unsigned char[3 * template_size];
+	unsigned char* h_template_image = new unsigned char[template_size];
 
 	for (int col = 0; col < template_width; col++) {
 		for (int row = 0; row < template_height; row++) {
-			rgb_t colors;
+			rgb_t color;
 
-			template_image.get_pixel(col, row, colors);
-			h_template_image[(row * template_width + col) * 3 + 0] = colors.red;
-			h_template_image[(row * template_width + col) * 3 + 1] = colors.green;
-			h_template_image[(row * template_width + col) * 3 + 2] = colors.blue;
+			template_image.get_pixel(col, row, color);
+			h_template_image[row * template_width + col] = color.red;
 		}
 	}
 
-	cufftComplex* h_main_signal = (cufftComplex *)malloc(sizeof(cufftComplex) * main_width * main_height * 3);
-	cufftComplex* h_template_signal = (cufftComplex *)malloc(sizeof(cufftComplex) * template_width * template_height * 3);
-	int main_signal_size = main_width * main_height * 3;
-	int template_signal_size = template_width * template_height * 3;
+	cufftComplex* h_main_signal = (cufftComplex *)malloc(sizeof(cufftComplex) * main_width * main_height);
+	cufftComplex* h_template_signal = (cufftComplex *)malloc(sizeof(cufftComplex) * template_width * template_height);
+	int main_signal_size = main_width * main_height;
+	int template_signal_size = template_width * template_height;
 
 	for (int y = 0; y < main_height; y++) {
 		for (int x = 0; x < main_width; x++) {
-			h_main_signal[(y * main_width + x) * 3 + 0].x = (double)h_main_image[(y * main_width + x) * 3 + 0];
-			h_main_signal[(y * main_width + x) * 3 + 1].x = (double)h_main_image[(y * main_width + x) * 3 + 1];
-			h_main_signal[(y * main_width + x) * 3 + 2].x = (double)h_main_image[(y * main_width + x) * 3 + 2];
-			h_main_signal[(y * main_width + x) * 3 + 0].y = 0;
-			h_main_signal[(y * main_width + x) * 3 + 1].y = 0;
-			h_main_signal[(y * main_width + x) * 3 + 2].y = 0;
+			h_main_signal[y * main_width + x].x = (double)h_main_image[y * main_width + x];
+			h_main_signal[y * main_width + x].y = 0;
 		}
 	}
 
 
 	for (int y = 0; y < template_height; y++) {
 		for (int x = 0; x < template_width; x++) {
-			h_template_signal[(y * template_width + x) * 3 + 0].x = (double)h_template_image[(y * template_width + x) * 3 + 0];
-			h_template_signal[(y * template_width + x) * 3 + 1].x = (double)h_template_image[(y * template_width + x) * 3 + 1];
-			h_template_signal[(y * template_width + x) * 3 + 2].x = (double)h_template_image[(y * template_width + x) * 3 + 2];
-			h_template_signal[(y * template_width + x) * 3 + 0].y = 0;
-			h_template_signal[(y * template_width + x) * 3 + 1].y = 0;
-			h_template_signal[(y * template_width + x) * 3 + 2].y = 0;
+			h_template_signal[y * template_width + x].x = (double)h_template_image[y * template_width + x];
+			h_template_signal[y * template_width + x].y = 0;
 		}
 	}
 
@@ -190,7 +182,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	dim3 blockDimensions(BLOCK_SIZE, 1, 1);
 
 	ComplexPointwiseMulAndScale << <gridDimensions, blockDimensions >> >((cufftComplex *)d_main_signal_out, (cufftComplex *)d_template_signal_out, NEW_SIZE, 1.0f / NEW_SIZE);
-
+	cout << "Successfully completed complex pointwise mul and scale" << endl;
 	errorHandler(cudaGetLastError());
 
 	// Perform the inverse fft on the main signal
@@ -343,6 +335,9 @@ void Convolve(const Complex *signal, int signal_size,
 	// Loop over output element indices
 	for (int i = 0; i < signal_size; ++i)
 	{
+		if (i % 1000 == 0)
+			cout << ".";
+
 		filtered_signal[i].x = filtered_signal[i].y = 0;
 
 		// Loop over convolution indices
