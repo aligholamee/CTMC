@@ -6,6 +6,9 @@
 #include <math_functions.h>
 #include <bitmap_image.hpp>
 #include <cufft.h>
+#include <assert.h>
+
+using namespace std;
 
 #define errorHandler(stmt)																					\
 	do {																									\
@@ -16,12 +19,9 @@
 	} while (0)																								\
 
 #define M_PI 3.14159265
-#define BLOCK_SIZE_X 32
-#define BLOCK_SIZE_Y 32
+ 
 #define BLOCK_SIZE 1024
 typedef float2 Complex;
-
-using namespace std;
 
 int initiate_parallel_template_matching(bitmap_image, bitmap_image);
 static __device__ __host__ inline Complex ComplexAdd(Complex, Complex);
@@ -29,9 +29,49 @@ static __device__ __host__ inline Complex ComplexScale(Complex, float);
 static __device__ __host__ inline Complex ComplexMul(Complex, Complex);
 static __global__ void ComplexPointwiseMulAndScale(cufftComplex *, cufftComplex *, int, float);
 
+inline bool
+sdkCompareL2fe(const float* reference, const float* data,
+	const unsigned int len, const float epsilon)
+{
+	assert(epsilon >= 0);
+
+	float error = 0;
+	float ref = 0;
+
+	for (unsigned int i = 0; i < len; ++i) {
+
+		float diff = reference[i] - data[i];
+		error += diff * diff;
+		ref += reference[i] * reference[i];
+	}
+
+	float normRef = sqrtf(ref);
+	if (fabs(ref) < 1e-7) {
+#ifdef _DEBUG
+		std::cerr << "ERROR, reference l2-norm is 0\n";
+#endif
+		return false;
+	}
+	float normError = sqrtf(error);
+	error = normError / normRef;
+	bool result = error < epsilon;
+#ifdef _DEBUG
+	if (!result)
+	{
+		std::cerr << "ERROR, l2-norm error "
+			<< error << " is greater than epsilon " << epsilon << "\n";
+	}
+#endif
+
+	return result;
+}
+
 // Padding functions
 int PadData(const cufftComplex *signal, cufftComplex **padded_signal, int signal_size,
 	const cufftComplex *filter_kernel, cufftComplex **padded_filter_kernel, int filter_kernel_size);
+
+// Filtering functions
+void Convolve(const Complex *, int, const Complex *, int, Complex *);
 
 int get_number_of_occurances(cufftComplex * arr, unsigned int size);
 
@@ -41,9 +81,7 @@ int main()
 	bitmap_image template_image("Input Files/collection_coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
-	wcout << "\n ------- ******************* ------- \n";
-	// initiate_serial_template_matching(main_image, template_image);
-	// device_query();
+
 	system("pause");
 	return 0;
 }
@@ -57,8 +95,6 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int template_width = template_image.width();
 	int template_height = template_image.height();
 	int template_size = template_width * template_height;
-	int height_difference = main_height - template_height;
-	int width_difference = main_width - template_width;
 
 	unsigned char* h_main_image = new unsigned char[3 * main_size];
 
@@ -93,9 +129,9 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	for (int y = 0; y < main_height; y++) {
 		for (int x = 0; x < main_width; x++) {
-			h_main_signal[(y * main_width + x) * 3 + 0].x = (float)h_main_image[(y * main_width + x) * 3 + 0];
-			h_main_signal[(y * main_width + x) * 3 + 1].x = (float)h_main_image[(y * main_width + x) * 3 + 1];
-			h_main_signal[(y * main_width + x) * 3 + 2].x = (float)h_main_image[(y * main_width + x) * 3 + 2];
+			h_main_signal[(y * main_width + x) * 3 + 0].x = (double)h_main_image[(y * main_width + x) * 3 + 0];
+			h_main_signal[(y * main_width + x) * 3 + 1].x = (double)h_main_image[(y * main_width + x) * 3 + 1];
+			h_main_signal[(y * main_width + x) * 3 + 2].x = (double)h_main_image[(y * main_width + x) * 3 + 2];
 			h_main_signal[(y * main_width + x) * 3 + 0].y = 0;
 			h_main_signal[(y * main_width + x) * 3 + 1].y = 0;
 			h_main_signal[(y * main_width + x) * 3 + 2].y = 0;
@@ -105,9 +141,9 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	for (int y = 0; y < template_height; y++) {
 		for (int x = 0; x < template_width; x++) {
-			h_template_signal[(y * template_width + x) * 3 + 0].x = (float)h_template_image[(y * template_width + x) * 3 + 0];
-			h_template_signal[(y * template_width + x) * 3 + 1].x = (float)h_template_image[(y * template_width + x) * 3 + 1];
-			h_template_signal[(y * template_width + x) * 3 + 2].x = (float)h_template_image[(y * template_width + x) * 3 + 2];
+			h_template_signal[(y * template_width + x) * 3 + 0].x = (double)h_template_image[(y * template_width + x) * 3 + 0];
+			h_template_signal[(y * template_width + x) * 3 + 1].x = (double)h_template_image[(y * template_width + x) * 3 + 1];
+			h_template_signal[(y * template_width + x) * 3 + 2].x = (double)h_template_image[(y * template_width + x) * 3 + 2];
 			h_template_signal[(y * template_width + x) * 3 + 0].y = 0;
 			h_template_signal[(y * template_width + x) * 3 + 1].y = 0;
 			h_template_signal[(y * template_width + x) * 3 + 2].y = 0;
@@ -138,7 +174,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	errorHandler(cudaMemcpy(d_main_signal, h_padded_main_signal, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyHostToDevice));
 	errorHandler(cudaMemcpy(d_template_signal, h_padded_template_signal, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyHostToDevice));
 
-	// Plan for 2 CUFFT_FORWARDs :)))
+	// Plan for 2 CUFFT_FORWARDs
 	cufftHandle plan_main;
 	cufftHandle plan_template;
 	cufftPlan1d(&plan_main, NEW_SIZE, CUFFT_C2C, 1);
@@ -164,6 +200,27 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	cufftComplex * h_correlation_signal;
 	h_correlation_signal = h_padded_main_signal;
 	errorHandler(cudaMemcpy(h_correlation_signal, d_inversed, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyDeviceToHost));
+
+	/* for (int i = 0; i < NEW_SIZE; i++) {
+		h_correlation_signal[i].x = abs(h_correlation_signal[i].x);
+		h_correlation_signal[i].y = abs(h_correlation_signal[i].y);
+	}
+	*/
+
+	cufftComplex* h_convolved_on_cpu;
+	h_convolved_on_cpu = (Complex*)malloc(sizeof(Complex) * main_signal_size);
+
+	// Convolve on the host
+	Convolve(h_main_signal, main_signal_size, h_template_signal,
+		template_signal_size, h_convolved_on_cpu);
+
+	// Compare CPU and GPU result
+	bool bTestResult = sdkCompareL2fe((float *)h_convolved_on_cpu,
+		(float *)h_correlation_signal, 2 * main_signal_size,
+		1e-5f);
+
+	printf("\nvalue of TestResult %d\n", bTestResult);
+
 	get_number_of_occurances(h_correlation_signal, NEW_SIZE);
 
 
@@ -258,7 +315,7 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size)
 	cufftComplex max = arr[0];
 	int num_of_occurs = 0;
 
-	for (unsigned int i = 0; i < size; i++) {
+	for (unsigned int i = 1; i < size; i++) {
 		if (arr[i].x > max.x && arr[i].y > max.y) {
 			num_of_occurs = 1;
 			max = arr[i];
@@ -268,8 +325,35 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size)
 			num_of_occurs++;
 	}
 
-	wcout << "[Found Minimum]:  " << "(" << max.x << ", " << max.y << ")" << endl;
 	wcout << "[Number of Occurances]: " << num_of_occurs << endl;
 
 	return num_of_occurs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Filtering operations - Computing Convolution on the host
+////////////////////////////////////////////////////////////////////////////////
+void Convolve(const Complex *signal, int signal_size,
+	const Complex *filter_kernel, int filter_kernel_size,
+	Complex *filtered_signal)
+{
+	int minRadius = filter_kernel_size / 2;
+	int maxRadius = filter_kernel_size - minRadius;
+
+	// Loop over output element indices
+	for (int i = 0; i < signal_size; ++i)
+	{
+		filtered_signal[i].x = filtered_signal[i].y = 0;
+
+		// Loop over convolution indices
+		for (int j = -maxRadius + 1; j <= minRadius; ++j)
+		{
+			int k = i + j;
+
+			if (k >= 0 && k < signal_size)
+			{
+				filtered_signal[i] = ComplexAdd(filtered_signal[i], ComplexMul(signal[k], filter_kernel[minRadius - j]));
+			}
+		}
+	}
 }
