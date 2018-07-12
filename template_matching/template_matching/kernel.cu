@@ -79,7 +79,7 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size);
 
 int main()
 {
-	bitmap_image main_image("Input Files/collection.bmp");
+	bitmap_image main_image("Input Files/collection_coin.bmp");
 	bitmap_image template_image("Input Files/collection_coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
@@ -98,18 +98,14 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int template_height = template_image.height();
 	int template_size = template_width * template_height;
 
-	// Convert to grayscale
-	main_image.convert_to_grayscale();
-	template_image.convert_to_grayscale();
 
 	unsigned char* h_main_image = new unsigned char[main_size];
 
 	for (int col = 0; col < main_width; col++) {
 		for (int row = 0; row < main_height; row++) {
 			rgb_t color;
-
 			main_image.get_pixel(col, row, color);
-			h_main_image[row * main_width + col] = color.red;
+			h_main_image[row * main_width + col] = color.red * 0.2126 + color.green * 0.7152 + color.blue * 0.0722;
 		}
 	}
 
@@ -118,9 +114,8 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	for (int col = 0; col < template_width; col++) {
 		for (int row = 0; row < template_height; row++) {
 			rgb_t color;
-
 			template_image.get_pixel(col, row, color);
-			h_template_image[row * template_width + col] = color.red;
+			h_template_image[row * template_width + col] = color.red * 0.2126 + color.green * 0.7152 + color.blue * 0.0722;
 		}
 	}
 
@@ -129,6 +124,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int main_signal_size = main_width * main_height;
 	int template_signal_size = template_width * template_height;
 
+	// Convert to complex
 	for (int y = 0; y < main_height; y++) {
 		for (int x = 0; x < main_width; x++) {
 			h_main_signal[y * main_width + x].x = (float)h_main_image[y * main_width + x];
@@ -173,8 +169,8 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	cufftPlan2d(&plan_template, int(sqrt(NEW_SIZE)), int(sqrt(NEW_SIZE)), CUFFT_C2C);
 
 	// Perform forward FFT
-	cufftExecC2C(plan_main, (cufftComplex *)d_main_signal, (cufftComplex *)d_main_signal_out, CUFFT_FORWARD);
-	cufftExecC2C(plan_template, (cufftComplex *)d_template_signal, (cufftComplex *)d_template_signal_out, CUFFT_FORWARD);
+	cufftExecC2C(plan_main, d_main_signal, (cufftComplex *)d_main_signal_out, CUFFT_FORWARD);
+	cufftExecC2C(plan_template, d_template_signal, (cufftComplex *)d_template_signal_out, CUFFT_FORWARD);
 
 
 	dim3 gridDimensions((unsigned int)(ceil(NEW_SIZE / (float)BLOCK_SIZE)), 1, 1);
@@ -182,7 +178,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	// Convert to complex conjugate
 	cout << "Launching ComplexConjugate<<< >>>\n";
-	ComplexConjugate << <gridDimensions, blockDimensions >> > ((cufftComplex *)d_template_signal, (cufftComplex *)d_template_signal, NEW_SIZE);
+	// ComplexConjugate << <gridDimensions, blockDimensions >> > ((cufftComplex *)d_template_signal, (cufftComplex *)d_template_signal, NEW_SIZE);
 	cout << "Successfully completed complex conjugate" << endl;
 
 	// Multiply the coefficients together and normalize the result
@@ -192,21 +188,16 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	cout << "Successfully completed complex pointwise mul and scale" << endl;
 	errorHandler(cudaGetLastError());
 
-	ComplexNormalizeComplexPointwiseMulAndScale << < gridDimensions, blockDimensions >> > ((cufftComplex *)d_main_signal_out, (cufftComplex *)d_main_signal_out, NEW_SIZE);
+	// ComplexNormalizeComplexPointwiseMulAndScale << < gridDimensions, blockDimensions >> > ((cufftComplex *)d_main_signal_out, (cufftComplex *)d_main_signal_out, NEW_SIZE);
 
 	// Perform the inverse fft on the main signal
-	cufftExecC2C(plan_main, (cufftComplex *)d_main_signal_out, (cufftComplex *)d_inversed, CUFFT_INVERSE);
+	cufftExecC2C(plan_main, d_main_signal_out, (cufftComplex *)d_inversed, CUFFT_INVERSE);
 
 	// Copy data back to host
 	cufftComplex * h_correlation_signal;
 	h_correlation_signal = h_padded_main_signal;
 	errorHandler(cudaMemcpy(h_correlation_signal, d_inversed, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyDeviceToHost));
 	
-	// Normalize the convolution result
-	for (int i = 0; i < NEW_SIZE; i++) {
-		h_correlation_signal[i].x = h_correlation_signal[i].x / (float)NEW_SIZE;
-	}
-
 	ofstream convolveResult;
 	convolveResult.open("convRes.txt");
 
@@ -348,16 +339,16 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size)
 	int num_of_occurs = 0;
 
 	for (unsigned int i = 1; i < size; i++) {
-		if (arr[i].x > max.x) {
+		if (abs(arr[i].y) > abs(max.y)) {
 			num_of_occurs = 1;
 			max = arr[i];
 		}
 
-		if (arr[i].x == max.x)
+		if (abs(arr[i].y) == abs(max.y))
 			num_of_occurs++;
 	}
 
-	wcout << "[Found Maximum]: " << max.x << endl;
+	wcout << "[Found Maximum]: " << max.y << endl;
 	wcout << "[Number of Occurances]: " << num_of_occurs << endl;
 
 	return num_of_occurs;
