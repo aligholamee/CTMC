@@ -77,7 +77,7 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size);
 
 int main()
 {
-	bitmap_image main_image("Input Files/collection.bmp");
+	bitmap_image main_image("Input Files/collection2.bmp");
 	bitmap_image template_image("Input Files/collection_coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
@@ -129,7 +129,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	for (int y = 0; y < main_height; y++) {
 		for (int x = 0; x < main_width; x++) {
-			h_main_signal[y * main_width + x].x = (double)h_main_image[y * main_width + x];
+			h_main_signal[y * main_width + x].x = (float)h_main_image[y * main_width + x];
 			h_main_signal[y * main_width + x].y = 0;
 		}
 	}
@@ -137,7 +137,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	for (int y = 0; y < template_height; y++) {
 		for (int x = 0; x < template_width; x++) {
-			h_template_signal[y * template_width + x].x = (double)h_template_image[y * template_width + x];
+			h_template_signal[y * template_width + x].x = (float)h_template_image[y * template_width + x];
 			h_template_signal[y * template_width + x].y = 0;
 		}
 	}
@@ -148,8 +148,6 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	cufftComplex* d_template_signal_out;
 	cufftComplex* d_inversed;
 
-	int main_memsize = sizeof(cufftComplex) * main_signal_size;
-	int template_memsize = sizeof(cufftComplex) * template_signal_size;
 
 	// Pad image signals
 	cufftComplex *h_padded_main_signal;
@@ -169,8 +167,8 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	// Plan for 2 CUFFT_FORWARDs
 	cufftHandle plan_main;
 	cufftHandle plan_template;
-	cufftPlan1d(&plan_main, NEW_SIZE, CUFFT_C2C, 1);
-	cufftPlan1d(&plan_template, NEW_SIZE, CUFFT_C2C, 1);
+	cufftPlan2d(&plan_main, int(sqrt(NEW_SIZE)), int(sqrt(NEW_SIZE)), CUFFT_C2C);
+	cufftPlan2d(&plan_template, int(sqrt(NEW_SIZE)), int(sqrt(NEW_SIZE)), CUFFT_C2C);
 
 	// Perform forward FFT
 	cufftExecC2C(plan_main, (cufftComplex *)d_main_signal, (cufftComplex *)d_main_signal_out, CUFFT_FORWARD);
@@ -193,15 +191,24 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	h_correlation_signal = h_padded_main_signal;
 	errorHandler(cudaMemcpy(h_correlation_signal, d_inversed, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyDeviceToHost));
 
-	/* for (int i = 0; i < NEW_SIZE; i++) {
+	for (int i = 0; i < NEW_SIZE; i++) {
 		h_correlation_signal[i].x = abs(h_correlation_signal[i].x);
 		h_correlation_signal[i].y = abs(h_correlation_signal[i].y);
 	}
-	*/
+	
+	ofstream convolveResult;
+	convolveResult.open("convRes.txt");
 
-	cufftComplex* h_convolved_on_cpu;
+	for (int i = 0; i < NEW_SIZE; i++) {
+		convolveResult << "(" << h_correlation_signal[i].x << ", " << h_correlation_signal[i].y << ")" << endl;
+	}
+
+	convolveResult.close();
+
+	/*cufftComplex* h_convolved_on_cpu;
 	h_convolved_on_cpu = (Complex*)malloc(sizeof(Complex) * main_signal_size);
 
+	/*
 	// Convolve on the host
 	Convolve(h_main_signal, main_signal_size, h_template_signal,
 		template_signal_size, h_convolved_on_cpu);
@@ -213,6 +220,7 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 
 	printf("\nvalue of TestResult %d\n", bTestResult);
 
+	*/
 	get_number_of_occurances(h_correlation_signal, NEW_SIZE);
 
 
@@ -308,15 +316,16 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size)
 	int num_of_occurs = 0;
 
 	for (unsigned int i = 1; i < size; i++) {
-		if (arr[i].x > max.x && arr[i].y > max.y) {
+		if (arr[i].x > max.x) {
 			num_of_occurs = 1;
 			max = arr[i];
 		}
 
-		if (arr[i].x == max.x && arr[i].y == max.y)
+		if (arr[i].x == max.x)
 			num_of_occurs++;
 	}
 
+	wcout << "[Found Maximum]: " << max.x << endl;
 	wcout << "[Number of Occurances]: " << num_of_occurs << endl;
 
 	return num_of_occurs;
