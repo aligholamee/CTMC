@@ -1,6 +1,6 @@
 \chapter{Implementation and Performance Analysis}
 
-\section{Analysis of Naive Template Matching(NTM)}
+\section{Analysis of Naive Template Matching}
 In this section, we'll analyze the implementation and the performance of the \textit{Naive Template Matching} algorithm. First of all, let's consider the serial implementation case. 
 
 \subsection{Bitmap Images}
@@ -22,3 +22,45 @@ We can obtain the best possible match by finding the minimum SAD in SAD array. W
 
 \subsubsection{Find Number of Occurrences}
 Since the main task is to find the number of occurrences of template image in main image, we should count the number of occurrences of minimum SAD in the SAD array. To speed up the process we've used shared memory again. The intuition of using shared memory is exactly the same as the previous section.
+
+\subsection{Launch Parameters on Test Cases}
+The test has been done on three different sizes of images. One of the medium sized images is a \textit{bitmap} image with dimensionality of $1112 * 1500$. The template image is a $116*116$ image in this case. Considering a block size of 1024 on a \textit{Nvidia 850m GTX} (compute capability of 5), the launch parameters are provided below:
+\begin{figure}[!h]\centering
+	\includegraphics[width=0.6\textwidth]{grid_block.PNG}
+	\label{pl1}
+\end{figure}
+
+\subsection{Occupancy Analysis}
+Before getting into the details, it is important to mention that maximum number of active warps in theory is 64. \textit{Nsight} profiler provides great details on the number of active warps per SM. In this case, there are 63.83 active warps on the first kernel (Compute Sad Array Kernel). The occupancy can obtained by dividing the number of active warps to the number of maximum warps available:
+\begin{equation}
+	 occupancy = \frac{63.83}{64} = 99.74 \%
+\end{equation}
+\begin{figure}[!h]\centering
+	\includegraphics[width=0.99\textwidth]{occupancy_analysis.PNG}
+	\caption{Illustration of varying the size of blocks, registers and shared memory on the achieved occupancy.}
+	\label{pl1}
+\end{figure}
+
+According to figure 3.1, varying the number of threads per block might yield the same result in other scenarios. The circled point shows the current number of threads per block and the current upper limit of active warps. Note that the number of active warps is not the number of warps per block (that is threads per block divided by warp size, rounded up). If the chart's line goes higher than the circle, changing the block size could increase occupancy without changing the other factors.  Also, increasing the number of variables (registers per block) will drastically decrease the occupancy of the first kernel.
+
+\subsection{SM Activity Analysis}
+\begin{figure}[!h]\centering
+	\includegraphics[width=0.99\textwidth]{sm_activity.PNG}
+	\caption{Issue efficiency and SM activity charts for the first (bottleneck) kernel.}
+	\label{pl1}
+\end{figure}
+The IPC chart demonstrates the achieved instructions throughputs per SM for both, issued instructions and executed instructions. The theoretical maximum peak IPC is a device limit and defined by the compute capabilities of the target device.
+
+\subsubsection{Issued IPC}
+The average number of issued instructions per cycle accounting for every iteration of instruction replays. Optimal if as close as possible to the Executed IPC. As described in the background section of this document, some assembly instructions require to be multi-issued. Hence, the instruction mix affects the definition of the optimal target for this metric. In this case, the issued IPC throughput is minimum since there weren't any multi issue instructions in the first kernel.
+
+\subsubsection{Executed IPC}
+The average number of executed instructions per cycle. Each warp scheduler of a multiprocessor can execute instructions independently, a target goal of executing one instruction per cycle means executing on average with an IPC equal to the number of warp schedulers per SM. The maximum achievable target IPC for a kernel is dependent on the mixture of instructions executed. 
+
+\subsubsection{SM Activity Chart}
+The second chart provides information on the activity of each SM during the kernel launch. A multiprocessor is considered to be active if at least one warp is currently assigned for execution. An SM can be inactive - even though the kernel grid is not yet completed - due to high workload imbalances. Such uneven balancing between the SMs can be caused by a few factors: Different execution times for the kernel blocks, variations between the number of scheduled blocks per SM, or a combination of the two. In this case, non of the above has occurred and the activity result is almost 100\%.
+
+\subsubsection{IPW Chart}
+One of the most common patterns for varying IPWs is conditionally executed code blocks. IPW can be useful while having variations in SM activity chart which in this case, non of these have occurred.
+
+

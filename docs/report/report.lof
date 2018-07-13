@@ -2,5 +2,7 @@
 \addvspace {10\p@ }
 \contentsline {figure}{\numberline {2.1}{\ignorespaces Illustration of image padding and correlation. The highest value of the correlation function occurs at the point where template is exactly on top of the \textit {T} in the image.}}{6}{figure.2.1}
 \addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Illustration of varying the size of blocks, registers and shared memory on the achieved occupancy.}}{10}{figure.3.1}
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Issue efficiency and SM activity charts for the first (bottleneck) kernel.}}{11}{figure.3.2}
 \addvspace {10\p@ }
 \addvspace {10\p@ }

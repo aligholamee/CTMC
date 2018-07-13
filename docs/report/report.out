@@ -14,12 +14,15 @@
 \BOOKMARK [2][-]{subsection.2.2.3}{Convolution and Correlation Theorems}{section.2.2}% 14
 \BOOKMARK [1][-]{section.2.3}{Fast Fourier Transform}{chapter.2}% 15
 \BOOKMARK [0][-]{chapter.3}{Implementation and Performance Analysis}{}% 16
-\BOOKMARK [1][-]{section.3.1}{Analysis of Naive Template Matching\(NTM\)}{chapter.3}% 17
+\BOOKMARK [1][-]{section.3.1}{Analysis of Naive Template Matching}{chapter.3}% 17
 \BOOKMARK [2][-]{subsection.3.1.1}{Bitmap Images}{section.3.1}% 18
 \BOOKMARK [2][-]{subsection.3.1.2}{Serial Implementation of NTM}{section.3.1}% 19
 \BOOKMARK [2][-]{subsection.3.1.3}{Timing the Serial NTM}{section.3.1}% 20
 \BOOKMARK [2][-]{subsection.3.1.4}{CUDA Implementation of NTM}{section.3.1}% 21
-\BOOKMARK [0][-]{chapter.4}{Future Work}{}% 22
-\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 23
-\BOOKMARK [0][-]{section*.6}{Acknowledgements}{}% 24
-\BOOKMARK [0][-]{section*.8}{References}{}% 25
+\BOOKMARK [2][-]{subsection.3.1.5}{Launch Parameters on Test Cases}{section.3.1}% 22
+\BOOKMARK [2][-]{subsection.3.1.6}{Occupancy Analysis}{section.3.1}% 23
+\BOOKMARK [2][-]{subsection.3.1.7}{SM Activity Analysis}{section.3.1}% 24
+\BOOKMARK [0][-]{chapter.4}{Future Work}{}% 25
+\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 26
+\BOOKMARK [0][-]{section*.10}{Acknowledgements}{}% 27
+\BOOKMARK [0][-]{section*.12}{References}{}% 28
