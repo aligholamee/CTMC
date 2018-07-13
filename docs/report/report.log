@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  13 JUL 2018 14:28
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  13 JUL 2018 15:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -238,7 +238,7 @@ LaTeX Info: Redefining \nameref on input line 29.
 \openout3 = `report.out'.
 
  (./title.tex
-<nitc-logo.png, id=88, 268.00125pt x 255.20343pt>
+<nitc-logo.png, id=104, 268.00125pt x 255.20343pt>
 File: nitc-logo.png Graphic file (type png)
  <use nitc-logo.png>
 Package pdftex.def Info: nitc-logo.png used on input line 31.
@@ -285,7 +285,7 @@ l.39
 Chapter 2.
 [3
 
-] [4] <figure_2_1.PNG, id=178, 539.01375pt x 773.89125pt>
+] [4] <figure_2_1.PNG, id=198, 539.01375pt x 773.89125pt>
 File: figure_2_1.PNG Graphic file (type png)
 
 <use figure_2_1.PNG>
@@ -297,15 +297,20 @@ LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 [5] [6 <./figure_2_1.PNG>]) (./work-done.tex [7]
 Chapter 3.
-) (./future-work.tex [8
 
-]
+Overfull \hbox (28.78583pt too wide) in paragraph at lines 3--3
+[]\OT1/cmr/bx/n/17.28 Analysis of Naive Tem-plate Match-ing(NTM) 
+ []
+
+[8
+
+]) (./future-work.tex [9]
 Chapter 4.
-) (./conclusion.tex [9
+) (./conclusion.tex [10
 
 ]
 Chapter 5.
-) (./acknow.tex [10
+) (./acknow.tex [11
 
 ]
 Underfull \hbox (badness 10000) in paragraph at lines 7--16
@@ -332,12 +337,12 @@ Underfull \hbox (badness 10000) in paragraph at lines 7--16
 
  []
 
-[11
+[12
 
 
 ]) (./ref.tex)
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 51.
- [12
+ [13
 
 
 ]
@@ -345,22 +350,15 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 51.
  (./report.aux)
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 51.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 51.
-
-
-Package rerunfilecheck Warning: File `report.out' has changed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `report.out':
-(rerunfilecheck)             Before: 688ACD05603E904099844D47FCB4ED6E;1471
-(rerunfilecheck)             After:  AF44CA5AA9690784C6C2F03D436D57F4;1474.
+Package rerunfilecheck Info: File `report.out' has not changed.
+(rerunfilecheck)             Checksum: 796E088ECCACC56519D332AD3E705958;1785.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 51.
  ) 
 Here is how much of TeX's memory you used:
- 5225 strings out of 492995
- 77213 string characters out of 6136402
+ 5238 strings out of 492995
+ 77404 string characters out of 6136402
  164830 words of memory out of 5000000
- 8667 multiletter control sequences out of 15000+600000
+ 8672 multiletter control sequences out of 15000+600000
  10697 words of font info for 37 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  28i,6n,28p,1352b,348s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -374,10 +372,10 @@ ts/cm/cmr8.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy1
 0.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/
 texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:/texlive/2
 017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
-Output written on report.pdf (16 pages, 602392 bytes).
+Output written on report.pdf (17 pages, 610820 bytes).
 PDF statistics:
- 279 PDF objects out of 1000 (max. 8388607)
- 243 compressed objects within 3 object streams
- 62 named destinations out of 1000 (max. 500000)
- 179 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 308 PDF objects out of 1000 (max. 8388607)
+ 271 compressed objects within 3 object streams
+ 70 named destinations out of 1000 (max. 500000)
+ 211 words of extra memory for PDF output out of 10000 (max. 10000000)
 

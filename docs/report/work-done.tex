@@ -1,3 +1,24 @@
 \chapter{Implementation and Performance Analysis}
 
-\section{Analysis of Naive Template Matching}
+\section{Analysis of Naive Template Matching(NTM)}
+In this section, we'll analyze the implementation and the performance of the \textit{Naive Template Matching} algorithm. First of all, let's consider the serial implementation case. 
+
+\subsection{Bitmap Images}
+For this project, we've used the \textit{bitmap} image library by \textit{Arash Partow} which is accessible \href{https://github.com/ArashPartow/bitmap}{here}.
+
+\subsection{Serial Implementation of NTM}
+The serial implementation of this algorithm consists of 2 main loops to iterate over image pixels. There is also a need for each pixel we are iterating through, to calculate the \textit{Sum of Absolute Deviations} which is the similarity measure between the main image pixels and the template image. Please refer to the \textit{Naive Template Matching} algorithm to see the code. Since the task is mainly focused on counting the number of occurance inside the main images, we can obtain this by finding the minimum value of \textit{SAD} while iterating through the main image pixels and counting the number of occurrences of the found minimum inside the main image matrix.
+
+\subsection{Timing the Serial NTM}
+We can obtain the elapsed time for the serial iteration using the \textit{chrono} library. The code for this section is provided here. Please refer to the serial implementation code for the details. 
+
+\subsection{CUDA Implementation of NTM}
+In this section we'll walk through the kernel codes provided in the \textit{kernel.cu}.
+\subsubsection{Compute Sad Array Kernel}
+The image data is being stored in an 1-D array. Thus, the best choice for CUDA kernel launch parameters would be to set grid dimensions as $(image\_width/block\_size\_x, image\_height/block\_size\_y, 1)$. The main purpose of this choice is not the way we have stored the data, it actually depends on the input data. Since we are dealing with images it is more suitable to have 2-D blocks of threads. Further explanations focus on the kernel implementation. Initially, each thread finds its own global 2-D identification as rows and columns. Then, each thread virtually sees a kernel (template) around it self. This is the core of the parallelization section. All threads can see all of the iterations in one place. We then compute the SAD of each pixel and load it inside an SAD array. The next section describes the reason to do so.
+
+\subsubsection{Find Minimum in Array Kernel}
+We can obtain the best possible match by finding the minimum SAD in SAD array. We'll do so using shared memory to speed up the process. Each thread helps loading the data inside a block into the shared memory of that block. We then use \textit{fminf} to find the minimum inside each block. Since we are using the shared memory, we need to do a \textit{reduction} to find the minimum across different blocks. We can obtain this reduction task defining a \textit{mutex} to control the global memory write by first thread of each block.
+
+\subsubsection{Find Number of Occurrences}
+Since the main task is to find the number of occurrences of template image in main image, we should count the number of occurrences of minimum SAD in the SAD array. To speed up the process we've used shared memory again. The intuition of using shared memory is exactly the same as the previous section.
