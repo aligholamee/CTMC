@@ -29,7 +29,8 @@
 \contentsline {subsubsection}{Executed IPC}{12}{section*.7}
 \contentsline {subsubsection}{SM Activity Chart}{12}{section*.8}
 \contentsline {subsubsection}{IPW Chart}{12}{section*.9}
-\contentsline {chapter}{\numberline {4}Future Work}{13}{chapter.4}
-\contentsline {chapter}{\numberline {5}Conclusion}{14}{chapter.5}
-\contentsline {chapter}{Acknowledgements}{15}{section*.10}
-\contentsline {chapter}{References}{16}{section*.12}
+\contentsline {subsection}{\numberline {3.1.8}Speedup Analysis}{12}{subsection.3.1.8}
+\contentsline {chapter}{\numberline {4}Future Work}{14}{chapter.4}
+\contentsline {chapter}{\numberline {5}Conclusion}{15}{chapter.5}
+\contentsline {chapter}{Acknowledgements}{16}{section*.10}
+\contentsline {chapter}{References}{17}{section*.12}

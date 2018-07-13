@@ -63,4 +63,13 @@ The second chart provides information on the activity of each SM during the kern
 \subsubsection{IPW Chart}
 One of the most common patterns for varying IPWs is conditionally executed code blocks. IPW can be useful while having variations in SM activity chart which in this case, non of these have occurred.
 
-
+\subsection{Speedup Analysis}
+In this section, we'll analyze the possible theoretical speedup. For this purpose, we'll calculate the serial computation time for the \textit{collection} and \textit{collection\_coin} images as described above. This table describes the average speedup of parallel naive template matching algorithm compared to serial implementation. As can be seen in the figure 3.3, the speedup obtained on GPU is dedicated to many different parameters. In order to calculate the theoretical speedup a direct use of \textit{Amdahl's law} doesn't fit in this problem. One might say that the number of cores in this case is \textit{N} (Same as the number of threads), but GPU does not have as many physical cores as the number of threads that can be launched. Additionally, significant portion of kernel time is begin spent just waiting for the data to be \textit{read/written} from/to global memory. Also, the frequency and operational power of CPU cores is higher than GPU cores. In this section, we'll use a modified version of the Amdahl's law \cite{amdahl}:
+\begin{equation}
+	S = \frac{1}{(1 - p) + (k * p / N)} \ \ \ \ \  \ k = freq(CPU) / freq(GPU)
+\end{equation}
+\begin{figure}[!h]\centering
+	\includegraphics[width=0.99\textwidth]{speedup.PNG}
+	\caption{Computation and data transfer time for naive serial and parallel implementation.}
+	\label{pl1}
+\end{figure}

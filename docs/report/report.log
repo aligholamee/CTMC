@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  13 JUL 2018 17:36
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  13 JUL 2018 21:19
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -181,6 +181,9 @@ LaTeX Warning: Label `pl1' multiply defined.
 
 LaTeX Warning: Label `pl1' multiply defined.
 
+
+LaTeX Warning: Label `pl1' multiply defined.
+
 )
 \openout1 = `report.aux'.
 
@@ -248,7 +251,7 @@ LaTeX Info: Redefining \nameref on input line 29.
 \openout3 = `report.out'.
 
  (./title.tex
-<nitc-logo.png, id=116, 268.00125pt x 255.20343pt>
+<nitc-logo.png, id=120, 268.00125pt x 255.20343pt>
 File: nitc-logo.png Graphic file (type png)
  <use nitc-logo.png>
 Package pdftex.def Info: nitc-logo.png used on input line 31.
@@ -295,7 +298,7 @@ l.39
 Chapter 2.
 [3
 
-] [4] <figure_2_1.PNG, id=223, 539.01375pt x 773.89125pt>
+] [4] <figure_2_1.PNG, id=231, 539.01375pt x 773.89125pt>
 File: figure_2_1.PNG Graphic file (type png)
 
 <use figure_2_1.PNG>
@@ -309,32 +312,38 @@ LaTeX Warning: `!h' float specifier changed to `!ht'.
 Chapter 3.
 [8
 
-] <grid_block.PNG, id=254, 896.59969pt x 178.41656pt>
+] <grid_block.PNG, id=262, 896.59969pt x 178.41656pt>
 File: grid_block.PNG Graphic file (type png)
  <use grid_block.PNG>
 Package pdftex.def Info: grid_block.PNG used on input line 29.
 (pdftex.def)             Requested size: 234.00238pt x 46.56416pt.
 
-[9] <occupancy_analysis.PNG, id=262, 1238.37656pt x 620.3175pt>
+[9] <occupancy_analysis.PNG, id=270, 1238.37656pt x 620.3175pt>
 File: occupancy_analysis.PNG Graphic file (type png)
 
 <use occupancy_analysis.PNG>
 Package pdftex.def Info: occupancy_analysis.PNG used on input line 39.
 (pdftex.def)             Requested size: 386.10214pt x 193.40387pt.
- [10 <./grid_block.PNG> <./occupancy_analysis.PNG>] <sm_activity.PNG, id=270, 1
+ [10 <./grid_block.PNG> <./occupancy_analysis.PNG>] <sm_activity.PNG, id=278, 1
 293.33188pt x 637.63219pt>
 File: sm_activity.PNG Graphic file (type png)
  <use sm_activity.PNG>
 Package pdftex.def Info: sm_activity.PNG used on input line 48.
 (pdftex.def)             Requested size: 386.10214pt x 190.34737pt.
 
-[11 <./sm_activity.PNG>]) (./future-work.tex [12]
+[11 <./sm_activity.PNG>] [12] <speedup.PNG, id=294, 1285.05093pt x 222.8325pt>
+File: speedup.PNG Graphic file (type png)
+
+<use speedup.PNG>
+Package pdftex.def Info: speedup.PNG used on input line 72.
+(pdftex.def)             Requested size: 386.10214pt x 66.95227pt.
+) (./future-work.tex [13 <./speedup.PNG>]
 Chapter 4.
-) (./conclusion.tex [13
+) (./conclusion.tex [14
 
 ]
 Chapter 5.
-) (./acknow.tex [14
+) (./acknow.tex [15
 
 ]
 Underfull \hbox (badness 10000) in paragraph at lines 7--16
@@ -361,12 +370,23 @@ Underfull \hbox (badness 10000) in paragraph at lines 7--16
 
  []
 
-[15
+[16
 
 
-]) (./ref.tex)
+]) (./ref.tex
+Underfull \hbox (badness 2253) in paragraph at lines 16--17
+[]\OT1/cmr/m/n/12 Andrey Alek-seenko (https://stackoverflow.com/users/929437/al
+and),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 16--17
+\OT1/cmr/m/n/12 Am-dahl's law and GPU, URL (ver-sion: 2018-07-13):
+ []
+
+)
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 51.
- [16
+ [17
 
 
 ]
@@ -375,7 +395,7 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 51.
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 51.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 51.
 Package rerunfilecheck Info: File `report.out' has not changed.
-(rerunfilecheck)             Checksum: E82D00BBC8943A9C4CD2A40D3031CDD5;2011.
+(rerunfilecheck)             Checksum: 3BC9C162D30CFE5DE949AE6DE2339C12;2081.
 
 
 LaTeX Warning: There were multiply-defined labels.
@@ -383,10 +403,10 @@ LaTeX Warning: There were multiply-defined labels.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 51.
  ) 
 Here is how much of TeX's memory you used:
- 5270 strings out of 492995
- 77927 string characters out of 6136402
- 164773 words of memory out of 5000000
- 8687 multiletter control sequences out of 15000+600000
+ 5282 strings out of 492995
+ 78085 string characters out of 6136402
+ 164807 words of memory out of 5000000
+ 8693 multiletter control sequences out of 15000+600000
  10697 words of font info for 37 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  28i,6n,28p,1352b,351s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -400,10 +420,10 @@ ts/cm/cmr8.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy1
 0.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/
 texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:/texlive/2
 017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
-Output written on report.pdf (21 pages, 746026 bytes).
+Output written on report.pdf (22 pages, 770577 bytes).
 PDF statistics:
- 361 PDF objects out of 1000 (max. 8388607)
- 313 compressed objects within 4 object streams
- 84 named destinations out of 1000 (max. 500000)
- 250 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 379 PDF objects out of 1000 (max. 8388607)
+ 328 compressed objects within 4 object streams
+ 89 named destinations out of 1000 (max. 500000)
+ 263 words of extra memory for PDF output out of 10000 (max. 10000000)
 
