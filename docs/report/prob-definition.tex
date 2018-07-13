@@ -58,3 +58,32 @@ where $f^*$ denotes the complex conjugate of $f$. Convolution is the tie between
 	\label{pl1}
 \end{figure}
 
+\section{Fast Fourier Transform}
+One of the main reasons that the DFT has became an essential tool in signal processing was the development of the fast Fourier transform. Computing the 1-D Fourier transform of $M$ points requires on the order of $M^2$ multiplication/addition operations. The FFT accomplishes the same task on the order of $M \log_2 M $ operations. If, for example $M = 1024$, the brute-force method will require approximately $10^6$ operations. While the FFT will require approximately $10^4$ operations. This is a computational advantage of 100 to 1. The decrease in computational complexity significantly impacts the time needed for processing the images. The FFT algorithm is based on the so-called \textit{successive doubling method}. Let's define the equation
+\begin{equation}
+	F(u) = \frac{1}{M} \sum_{x = 0}^{M - 1}f(x)W_M^{ux}
+\end{equation}
+where 
+\begin{equation}
+	W_M = e^{-j2\pi / M}
+\end{equation}
+and $M$ is assumed to be of the form
+\begin{equation}
+	M = 2^n
+\end{equation}
+with $n$ being a positive integer. Hence, $M$ can be expressed as 
+\begin{equation}
+	M = 2K
+\end{equation}
+Substitution of (2.14) into (2.11) yields
+\begin{equation}
+	F(u) = \frac{1}{2}[\frac{1}{K}\sum_{x = 0}^{K - 1} f(2x)W^{u(2x)}_{2K} + \frac{1}{K}\sum_{x = 0}^{K - 1}f(2x + 1)W_{2k}^{u(2x + 1)}]
+\end{equation}
+The number of multiplications and additions required to implement FFT:
+\begin{equation}
+	m(n) = 2m(n - 1) + 2^{n - 1} \ \ \  n \geq 1 = \frac{1}{2} M \log_2 M
+\end{equation}
+and
+\begin{equation}
+	a(n) = 2a(n - 1) + 2^n  \ \ \ n \geq 1 = M \log_2 M
+\end{equation}
