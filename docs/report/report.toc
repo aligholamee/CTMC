@@ -1,0 +1,21 @@
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}
+\contentsline {section}{\numberline {1.1}Background and Recent Research}{1}{section.1.1}
+\contentsline {subsection}{\numberline {1.1.1}Feature Based Approach}{1}{subsection.1.1.1}
+\contentsline {subsection}{\numberline {1.1.2}Area Based Approach}{1}{subsection.1.1.2}
+\contentsline {subsection}{\numberline {1.1.3}Naive Template Matching}{2}{subsection.1.1.3}
+\contentsline {subsection}{\numberline {1.1.4}Image Correlation Matching}{2}{subsection.1.1.4}
+\contentsline {subsection}{\numberline {1.1.5}Sequential Similarity Detection Algorithms}{2}{subsection.1.1.5}
+\contentsline {section}{\numberline {1.2}Motivation}{2}{section.1.2}
+\contentsline {chapter}{\numberline {2}Problem Definition}{3}{chapter.2}
+\contentsline {chapter}{\numberline {3}Work Done}{4}{chapter.3}
+\contentsline {section}{\numberline {3.1}<Section title>}{4}{section.3.1}
+\contentsline {subsection}{\numberline {3.1.1}<Sub-section title>}{4}{subsection.3.1.1}
+\contentsline {subsection}{\numberline {3.1.2}<Sub-section title>}{4}{subsection.3.1.2}
+\contentsline {subsection}{\numberline {3.1.3}<Sub-section title>}{4}{subsection.3.1.3}
+\contentsline {subsection}{\numberline {3.1.4}<Sub-section title>}{4}{subsection.3.1.4}
+\contentsline {subsection}{\numberline {3.1.5}<Sub-section title>}{4}{subsection.3.1.5}
+\contentsline {section}{\numberline {3.2}<Section title>}{4}{section.3.2}
+\contentsline {chapter}{\numberline {4}Future Work}{5}{chapter.4}
+\contentsline {chapter}{\numberline {5}Conclusion}{6}{chapter.5}
+\contentsline {chapter}{Acknowledgements}{7}{section*.3}
+\contentsline {chapter}{References}{8}{section*.5}
