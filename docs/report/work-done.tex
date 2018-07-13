@@ -68,6 +68,14 @@ In this section, we'll analyze the possible theoretical speedup. For this purpos
 \begin{equation}
 	S = \frac{1}{(1 - p) + (k * p / N)} \ \ \ \ \  \ k = freq(CPU) / freq(GPU)
 \end{equation}
+The core frequency of my Intel 4710HQ processor is 3490 MHz. The core frequency of each GPU core is 902 MHz. These information are extracted using beloved \textit{CPU-Z} and \textit{GPU-Z} programs. Replacing these information into 3.2 yields
+\begin{equation}
+	S = \frac{1}{(1 - p) + 3.86 * p / N}
+\end{equation}
+since the size of input is constant in this law, we'll assume that 3.3 is correct for the third experiment. Let's suppose that $\frac{1}{4}$ of the main program is parallelized, thus $p = \frac{1}{4}$ and the number of threads to run is 1828864 (1786 blocks of 1024). Theoretical speedup will be
+\begin{equation}
+	S = \frac{1}{(\frac{3}{4}) + 3.86 * \frac{\frac{1}{4}}{1828864}} = 1.33
+\end{equation}
 \begin{figure}[!h]\centering
 	\includegraphics[width=0.99\textwidth]{speedup.PNG}
 	\caption{Computation and data transfer time for naive serial and parallel implementation.}
