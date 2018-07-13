@@ -5,10 +5,6 @@
 #include <chrono>
 #include <math_functions.h>
 #include <bitmap_image.hpp>
-#include <cufft.h>
-#include <assert.h>
-
-using namespace std;
 
 #define errorHandler(stmt)																					\
 	do {																									\
@@ -19,71 +15,147 @@ using namespace std;
 	} while (0)																								\
 
 #define M_PI 3.14159265
- 
+#define BLOCK_SIZE_X 32
+#define BLOCK_SIZE_Y 32
 #define BLOCK_SIZE 1024
-typedef float2 Complex;
+
+using namespace std;
 
 int initiate_parallel_template_matching(bitmap_image, bitmap_image);
-static __device__ __host__ inline Complex ComplexAdd(Complex, Complex);
-static __device__ __host__ inline Complex ComplexScale(Complex, float);
-static __device__ __host__ inline Complex ComplexMul(Complex, Complex);
-static __global__ void ComplexPointwiseMulAndScale(cufftComplex *, cufftComplex *, int, float);
-static __global__ inline void ComplexNormalizeComplexPointwiseMulAndScale(cufftComplex * inData, cufftComplex *outData, int size);
-static __global__ inline void ComplexConjugate(cufftComplex * inData, cufftComplex *outData, int size);
+void initiate_serial_template_matching(bitmap_image, bitmap_image);
+void device_query();
+void extract_array(unsigned char*, unsigned int, bitmap_image);
+bitmap_image rotate_clockwise(bitmap_image image, unsigned int width, unsigned int height);
+int get_number_of_occurances(int * arr, unsigned int size);
 
-inline bool
-sdkCompareL2fe(const float* reference, const float* data,
-	const unsigned int len, const float epsilon)
+/*
+*	CUDA Kernel to compute SADs
+*/
+__global__ void
+compute_sad_array_kernel(int* sad_array, unsigned char* image, unsigned char* kernel, int sad_array_size, int image_width, int image_height, int kernel_width, int kernel_height, int kernel_size)
 {
-	assert(epsilon >= 0);
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	int SAD_RESULT = 0;
 
-	float error = 0;
-	float ref = 0;
+	if (row < image_height && col < image_width) {
+		#pragma unroll 4
+		for (int v_row = 0; v_row < kernel_height; v_row++) {
+			#pragma unroll 4
+			for (int v_col = 0; v_col < kernel_width; v_col++) {
+				int m_r = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 0]);
+				int m_g = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 1]);
+				int m_b = (int)(image[((row + v_row) * image_width + (col + v_col)) * 3 + 2]);
+				int t_r = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 0]);
+				int t_g = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 1]);
+				int t_b = (int)(kernel[(v_row * kernel_width + v_col) * 3 + 2]);
+				int error = abs(m_r - t_r) + abs(m_g - t_g) + abs(m_b - t_b);
+				SAD_RESULT += error;
+			}
+		}
 
-	for (unsigned int i = 0; i < len; ++i) {
 
-		float diff = reference[i] - data[i];
-		error += diff * diff;
-		ref += reference[i] * reference[i];
+		int NORMALIZED_SAD = (int)(SAD_RESULT / (float)kernel_size);
+
+		__syncthreads();
+
+		int my_index_in_sad_array = row * image_width + col;
+		if (my_index_in_sad_array < sad_array_size) {
+			sad_array[my_index_in_sad_array] = NORMALIZED_SAD;
+		}
 	}
-
-	float normRef = sqrtf(ref);
-	if (fabs(ref) < 1e-7) {
-#ifdef _DEBUG
-		std::cerr << "ERROR, reference l2-norm is 0\n";
-#endif
-		return false;
-	}
-	float normError = sqrtf(error);
-	error = normError / normRef;
-	bool result = error < epsilon;
-#ifdef _DEBUG
-	if (!result)
-	{
-		std::cerr << "ERROR, l2-norm error "
-			<< error << " is greater than epsilon " << epsilon << "\n";
-	}
-#endif
-
-	return result;
 }
 
-// Padding functions
-int PadData(const cufftComplex *signal, cufftComplex **padded_signal, int signal_size,
-	const cufftComplex *filter_kernel, cufftComplex **padded_filter_kernel, int filter_kernel_size);
 
-// Filtering functions
-void Convolve(const Complex *, int, const Complex *, int, Complex *);
+/*
+*	CUDA Kernel to compute the minimum number in an array
+*/
+__global__ void
+findMinInArrayKernel(int* mse_array, int mse_array_size, int* min_mse, int* mutex)
+{
+	unsigned int tId = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int stride = gridDim.x * blockDim.x;
+	unsigned int offset = 0;
 
-int get_number_of_occurances(cufftComplex * arr, unsigned int size);
+	__shared__ int cache[BLOCK_SIZE];
 
+	int temp = 5000;
+	while (tId + offset < mse_array_size) {
+		temp = fminf(temp, mse_array[tId + offset]);
+		offset += stride;
+	}
+
+	cache[threadIdx.x] = temp;
+
+	__syncthreads();
+
+	unsigned int i = blockDim.x / 2;
+	while (i != 0) {
+		if (threadIdx.x < i) {
+			cache[threadIdx.x] = fminf(cache[threadIdx.x], cache[threadIdx.x + i]);
+		}
+
+		__syncthreads();
+		i /= 2;
+	}
+
+	// Update global min for each block
+	if (threadIdx.x == 0) {
+
+		// Lock
+		while (atomicCAS(mutex, 0, 1) != 0);
+
+		*min_mse = fminf(*min_mse, cache[0]);
+
+		// Unlock
+		atomicExch(mutex, 0);
+	}
+}
+
+__global__ void
+findNumberofOccurances(int* mse_array, int* min_mse, int* mutex, int* num_occurances)
+{
+	unsigned int tId = threadIdx.x + blockIdx.x * blockDim.x;
+
+	__shared__ int cache[BLOCK_SIZE];
+
+	cache[threadIdx.x] = mse_array[tId];
+
+	if (threadIdx.x == 0)
+		cache[0] = 0;
+
+	__syncthreads();
+
+	if (cache[threadIdx.x] == *min_mse)
+		atomicAdd(&cache[0], 1);
+
+
+	__syncthreads();
+	// Update global occurance for each block
+	if (threadIdx.x == 0) {
+
+		// Lock
+		while (atomicCAS(mutex, 0, 1) != 0);
+
+		atomicAdd(num_occurances, cache[0]);
+
+		// Unlock
+		atomicExch(mutex, 0);
+	}
+}
 int main()
 {
-	bitmap_image main_image("Input Files/collection_coin.bmp");
-	bitmap_image template_image("Input Files/collection_coin.bmp");
+	bitmap_image main_image("Input Files/source.bmp");
+	bitmap_image template_image("Input Files/template.bmp");
+	bitmap_image rotated_template;
+	rotated_template = rotate_clockwise(template_image, template_image.width(), template_image.height());
 
 	initiate_parallel_template_matching(main_image, template_image);
+	initiate_parallel_template_matching(main_image, rotated_template);
 
+	wcout << "\n ------- ******************* ------- \n";
+	// initiate_serial_template_matching(main_image, template_image);
+	// device_query();
 	system("pause");
 	return 0;
 }
@@ -97,290 +169,278 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int template_width = template_image.width();
 	int template_height = template_image.height();
 	int template_size = template_width * template_height;
+	int height_difference = main_height - template_height;
+	int width_difference = main_width - template_width;
+	int mse_array_size = (height_difference + 1) * (width_difference + 1);
 
+	// Define host pointers
+	unsigned char* h_main_image;
+	unsigned char* h_template_image;
+	int* h_mse_array;
+	int* h_min_mse;
+	int* h_num_occurances;
+	int* h_template_image_rotated;
 
-	unsigned char* h_main_image = new unsigned char[main_size];
+	// Define device pointers
+	unsigned char* d_main_image;
+	unsigned char* d_template_image;
+	int* d_mse_array;
+	int* d_min_mse;
+	int* d_num_occurances;
+	int* d_mutex;
+
+	// CUDA time handling
+	cudaEvent_t start;
+	cudaEvent_t stop;
+	float elapsed_time = 0.0f;
+
+	// Host allocation
+
+	/*
+	Extract Matrices
+	*/
+
+	h_main_image = new unsigned char[3 * main_size];
 
 	for (int col = 0; col < main_width; col++) {
 		for (int row = 0; row < main_height; row++) {
-			rgb_t color;
-			main_image.get_pixel(col, row, color);
-			h_main_image[row * main_width + col] = color.red * 0.2126 + color.green * 0.7152 + color.blue * 0.0722;
+			rgb_t colors;
+
+			main_image.get_pixel(col, row, colors);
+			h_main_image[(row * main_width + col) * 3 + 0] = colors.red;
+			h_main_image[(row * main_width + col) * 3 + 1] = colors.green;
+			h_main_image[(row * main_width + col) * 3 + 2] = colors.blue;
 		}
 	}
 
-	unsigned char* h_template_image = new unsigned char[template_size];
+	h_template_image = new unsigned char[3 * template_size];
 
 	for (int col = 0; col < template_width; col++) {
 		for (int row = 0; row < template_height; row++) {
-			rgb_t color;
-			template_image.get_pixel(col, row, color);
-			h_template_image[row * template_width + col] = color.red * 0.2126 + color.green * 0.7152 + color.blue * 0.0722;
+			rgb_t colors;
+
+			template_image.get_pixel(col, row, colors);
+			h_template_image[(row * template_width + col) * 3 + 0] = colors.red;
+			h_template_image[(row * template_width + col) * 3 + 1] = colors.green;
+			h_template_image[(row * template_width + col) * 3 + 2] = colors.blue;
 		}
 	}
-
-	cufftComplex* h_main_signal = (cufftComplex *)malloc(sizeof(cufftComplex) * main_width * main_height);
-	cufftComplex* h_template_signal = (cufftComplex *)malloc(sizeof(cufftComplex) * template_width * template_height);
-	int main_signal_size = main_width * main_height;
-	int template_signal_size = template_width * template_height;
-
-	// Convert to complex
-	for (int y = 0; y < main_height; y++) {
-		for (int x = 0; x < main_width; x++) {
-			h_main_signal[y * main_width + x].x = (float)h_main_image[y * main_width + x];
-			h_main_signal[y * main_width + x].y = 0;
-		}
-	}
-
-
-	for (int y = 0; y < template_height; y++) {
-		for (int x = 0; x < template_width; x++) {
-			h_template_signal[y * template_width + x].x = (float)h_template_image[y * template_width + x];
-			h_template_signal[y * template_width + x].y = 0;
-		}
-	}
-
-	cufftComplex* d_main_signal;
-	cufftComplex* d_template_signal;
-	cufftComplex* d_main_signal_out;
-	cufftComplex* d_template_signal_out;
-	cufftComplex* d_inversed;
-
-
-	// Pad image signals
-	cufftComplex *h_padded_main_signal;
-	cufftComplex *h_padded_template_signal;
-
-
-	int NEW_SIZE = PadData(h_main_signal, &h_padded_main_signal, main_signal_size, h_template_signal, &h_padded_template_signal, template_signal_size);
-
-	errorHandler(cudaMalloc((void**)&d_main_signal, sizeof(cufftComplex) * NEW_SIZE));
-	errorHandler(cudaMalloc((void**)&d_template_signal, sizeof(cufftComplex) * NEW_SIZE));
-	errorHandler(cudaMalloc((void**)&d_main_signal_out, sizeof(cufftComplex) * NEW_SIZE));
-	errorHandler(cudaMalloc((void**)&d_template_signal_out, sizeof(cufftComplex) * NEW_SIZE));
-	errorHandler(cudaMalloc((void**)&d_inversed, sizeof(cufftComplex) * NEW_SIZE));
-	errorHandler(cudaMemcpy(d_main_signal, h_padded_main_signal, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyHostToDevice));
-	errorHandler(cudaMemcpy(d_template_signal, h_padded_template_signal, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyHostToDevice));
-
-	// Plan for 2 CUFFT_FORWARDs
-	cufftHandle plan_main;
-	cufftHandle plan_template;
-	cufftPlan2d(&plan_main, int(sqrt(NEW_SIZE)), int(sqrt(NEW_SIZE)), CUFFT_C2C);
-	cufftPlan2d(&plan_template, int(sqrt(NEW_SIZE)), int(sqrt(NEW_SIZE)), CUFFT_C2C);
-
-	// Perform forward FFT
-	cufftExecC2C(plan_main, d_main_signal, (cufftComplex *)d_main_signal_out, CUFFT_FORWARD);
-	cufftExecC2C(plan_template, d_template_signal, (cufftComplex *)d_template_signal_out, CUFFT_FORWARD);
-
-
-	dim3 gridDimensions((unsigned int)(ceil(NEW_SIZE / (float)BLOCK_SIZE)), 1, 1);
-	dim3 blockDimensions(BLOCK_SIZE, 1, 1);
-
-	// Convert to complex conjugate
-	cout << "Launching ComplexConjugate<<< >>>\n";
-	// ComplexConjugate << <gridDimensions, blockDimensions >> > ((cufftComplex *)d_template_signal, (cufftComplex *)d_template_signal, NEW_SIZE);
-	cout << "Successfully completed complex conjugate" << endl;
-
-	// Multiply the coefficients together and normalize the result
-	printf("Launching ComplexPointwiseMulAndScale<<< >>>\n");
-
-	ComplexPointwiseMulAndScale << <gridDimensions, blockDimensions >> >((cufftComplex *)d_main_signal_out, (cufftComplex *)d_template_signal_out, NEW_SIZE, 1.0f / NEW_SIZE);
-	cout << "Successfully completed complex pointwise mul and scale" << endl;
-	errorHandler(cudaGetLastError());
-
-	// ComplexNormalizeComplexPointwiseMulAndScale << < gridDimensions, blockDimensions >> > ((cufftComplex *)d_main_signal_out, (cufftComplex *)d_main_signal_out, NEW_SIZE);
-
-	// Perform the inverse fft on the main signal
-	cufftExecC2C(plan_main, d_main_signal_out, (cufftComplex *)d_inversed, CUFFT_INVERSE);
-
-	// Copy data back to host
-	cufftComplex * h_correlation_signal;
-	h_correlation_signal = h_padded_main_signal;
-	errorHandler(cudaMemcpy(h_correlation_signal, d_inversed, sizeof(cufftComplex) * NEW_SIZE, cudaMemcpyDeviceToHost));
-	
-	ofstream convolveResult;
-	convolveResult.open("convRes.txt");
-
-	for (int i = 0; i < NEW_SIZE; i++) {
-		convolveResult << "(" << h_correlation_signal[i].x << ", " << h_correlation_signal[i].y << ")" << endl;
-	}
-
-	convolveResult.close();
-
-	/*cufftComplex* h_convolved_on_cpu;
-	h_convolved_on_cpu = (Complex*)malloc(sizeof(Complex) * main_signal_size);
 
 	/*
-	// Convolve on the host
-	Convolve(h_main_signal, main_signal_size, h_template_signal,
-		template_signal_size, h_convolved_on_cpu);
-
-	// Compare CPU and GPU result
-	bool bTestResult = sdkCompareL2fe((float *)h_convolved_on_cpu,
-		(float *)h_correlation_signal, 2 * main_signal_size,
-		1e-5f);
-
-	printf("\nvalue of TestResult %d\n", bTestResult);
-
+	*************************
 	*/
-	get_number_of_occurances(h_correlation_signal, NEW_SIZE);
 
+	h_mse_array = new int[mse_array_size];
+	h_min_mse = new int[1];
+	h_num_occurances = new int[1];
 
-	// Cancel plans :))))
-	cufftDestroy(plan_main);
-	cufftDestroy(plan_template);
+	// Device allocation
+	errorHandler(cudaMalloc((void **)&d_main_image, 3 * main_size * sizeof(unsigned char)));
+	errorHandler(cudaMalloc((void **)&d_template_image, 3 * template_size * sizeof(unsigned char)));
+	errorHandler(cudaMalloc((void **)&d_mse_array, mse_array_size * sizeof(int)));
+	errorHandler(cudaMalloc((void **)&d_min_mse, sizeof(int)));
+	errorHandler(cudaMalloc((void **)&d_mutex, sizeof(int)));
+	errorHandler(cudaMalloc((void **)&d_num_occurances, sizeof(int)));
+	errorHandler(cudaMemset(d_min_mse, 20, sizeof(int)));
+	errorHandler(cudaMemset(d_mutex, 0, sizeof(int)));
+	errorHandler(cudaMemset(d_num_occurances, 0, sizeof(int)));
+	errorHandler(cudaMemcpy(d_main_image, h_main_image, 3 * main_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
+	errorHandler(cudaMemcpy(d_template_image, h_template_image, 3 * template_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
+	errorHandler(cudaEventCreate(&start));
+	errorHandler(cudaEventCreate(&stop));
+	errorHandler(cudaEventRecord(start));
 
-	// Free allocated memory
-	errorHandler(cudaFree(d_main_signal));
-	errorHandler(cudaFree(d_template_signal));
-	errorHandler(cudaFree(d_main_signal_out));
-	errorHandler(cudaFree(d_template_signal_out));
+	dim3 grid_dimensions((unsigned int)ceil((float)(main_width) / BLOCK_SIZE_X), (unsigned int)ceil((float)(main_height) / BLOCK_SIZE_Y), 1);
+	dim3 block_dimensions(BLOCK_SIZE_X, BLOCK_SIZE_Y, 1);
+	compute_sad_array_kernel << <grid_dimensions, block_dimensions >> > (d_mse_array, d_main_image, d_template_image, mse_array_size, main_width, main_height, template_width, template_height, template_size);
+
+	dim3 grid_dimensions_2((unsigned int)ceil((float)mse_array_size) / BLOCK_SIZE, 1, 1);
+	dim3 block_dimensions_2(BLOCK_SIZE, 1, 1);
+	findMinInArrayKernel << <grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, mse_array_size, d_min_mse, d_mutex);
+
+	findNumberofOccurances << < grid_dimensions_2, block_dimensions_2 >> > (d_mse_array, d_min_mse, d_mutex, d_num_occurances);
+	errorHandler(cudaGetLastError());
+	errorHandler(cudaEventRecord(stop, NULL));
+	errorHandler(cudaEventSynchronize(stop));
+	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
+	errorHandler(cudaMemcpy(h_mse_array, d_mse_array, mse_array_size * sizeof(int), cudaMemcpyDeviceToHost));
+	errorHandler(cudaMemcpy(h_min_mse, d_min_mse, sizeof(int), cudaMemcpyDeviceToHost));
+	errorHandler(cudaMemcpy(h_num_occurances, d_num_occurances, sizeof(int), cudaMemcpyDeviceToHost));
+
+	wcout << "[[[ Parallel Computation Results ]]] " << endl << endl;
+	wcout << "Elapsed time in msec = " << (int)(elapsed_time) << endl;
+	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
+	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
+	wcout << "[MSE Array Size]:	" << mse_array_size << endl;
+	// get_number_of_occurances(h_mse_array, mse_array_size);
+	wcout << "[Found Minimum]:  " << *h_min_mse << endl;
+	wcout << "[Number of Occurances]: " << *h_num_occurances << endl;
+	errorHandler(cudaFree(d_main_image));
+	errorHandler(cudaFree(d_template_image));
 	free(h_main_image);
 	free(h_template_image);
-	free(h_main_signal);
-	free(h_template_signal);
-	free(h_padded_main_signal);
-	free(h_padded_template_signal);
 	return EXIT_SUCCESS;
 }
 
-///////////////////////////////////////////////////////////////////////////////////
-// Function for padding original data
-//////////////////////////////////////////////////////////////////////////////////
-int PadData(const cufftComplex *signal, cufftComplex **padded_signal, int signal_size,
-	const cufftComplex *filter_kernel, cufftComplex **padded_filter_kernel, int filter_kernel_size)
+void initiate_serial_template_matching(bitmap_image mainImage, bitmap_image templateImage)
 {
-	int minRadius = filter_kernel_size / 2;
-	int maxRadius = filter_kernel_size - minRadius;
-	int new_size = signal_size + maxRadius;
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	int main_width = mainImage.width();
+	int main_height = mainImage.height();
+	int template_width = templateImage.width();
+	int template_height = templateImage.height();
 
-	// Pad signal
-	cufftComplex *new_data = (cufftComplex *)malloc(sizeof(cufftComplex) * new_size);
-	memcpy(new_data + 0, signal, signal_size * sizeof(cufftComplex));
-	memset(new_data + signal_size, 0, (new_size - signal_size) * sizeof(cufftComplex));
-	*padded_signal = new_data;
+	int templateSize = template_height * template_width;
 
-	// Pad filter
-	new_data = (cufftComplex *)malloc(sizeof(cufftComplex) * new_size);
-	memcpy(new_data + 0, filter_kernel + minRadius, maxRadius * sizeof(cufftComplex));
-	memset(new_data + maxRadius, 0, (new_size - filter_kernel_size) * sizeof(cufftComplex));
-	memcpy(new_data + new_size - minRadius, filter_kernel, minRadius * sizeof(cufftComplex));
-	*padded_filter_kernel = new_data;
+	int THRESHOLD = 20;
+	unsigned int NUM_OCCURANCES = 0;
+	int FOUND_MINIMUM = 100000;
+	int NUM_OF_ZEROS = 0;
 
-	return new_size;
+	wcout << "[[[ Initiated Serial Template Matching ]]] " << endl;
+
+	for (int col = 0; col < main_width - template_width; col++) {
+		for (int row = 0; row < main_height - template_height; row++) {
+
+			int SUM_OF_ABSOLUTE_DEVIATIONS = 0;
+
+			for (int j = 0; j < template_width; j++) {
+				for (int i = 0; i < template_height; i++) {
+
+					int mRow = row + i;
+					int mCol = col + j;
+
+					rgb_t m_color;
+					rgb_t t_color;
+
+					mainImage.get_pixel(mCol, mRow, m_color);
+					templateImage.get_pixel(j, i, t_color);
+
+					SUM_OF_ABSOLUTE_DEVIATIONS += abs(m_color.red - t_color.red) + abs(m_color.green - t_color.green) + abs(m_color.blue - t_color.blue);
+
+				}
+			}
+
+			int NORMALIZED_SAD = (int)(SUM_OF_ABSOLUTE_DEVIATIONS / (float)templateSize);
+
+			if (NORMALIZED_SAD < THRESHOLD) {
+				NUM_OCCURANCES++;
+			}
+
+			if (NORMALIZED_SAD < FOUND_MINIMUM) {
+				FOUND_MINIMUM = (int)NORMALIZED_SAD;
+			}
+
+			if (NORMALIZED_SAD == 0)
+				NUM_OF_ZEROS++;
+
+		}
+	}
+
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	wcout << "[[[ Serial Computation Results ]]] " << endl << endl;
+	wcout << "Elapsed time in msec = " << chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << endl;
+	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
+	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
+	wcout << "[Found Minimum]:  " << FOUND_MINIMUM << endl;
+	wcout << "[Number of Occurances]: " << NUM_OCCURANCES << endl;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-// Complex operations
-////////////////////////////////////////////////////////////////////////////////
-
-// Complex addition
-static __device__ __host__ inline Complex ComplexAdd(Complex a, Complex b)
+void device_query()
 {
-	Complex c;
-	c.x = a.x + b.x;
-	c.y = a.y + b.y;
-	return c;
-}
+	const int kb = 1024;
+	const int mb = kb * kb;
+	wcout << "NBody.GPU" << endl << "=========" << endl << endl;
 
-// Complex scale
-static __device__ __host__ inline Complex ComplexScale(Complex a, float s)
-{
-	Complex c;
-	c.x = s * a.x;
-	c.y = s * a.y;
-	return c;
-}
+	wcout << "CUDA version:   v" << CUDART_VERSION << endl;
 
-// Complex multiplication
-static __device__ __host__ inline Complex ComplexMul(Complex a, Complex b)
-{
-	Complex c;
-	c.x = a.x * b.x - a.y * b.y;
-	c.y = a.x * b.y + a.y * b.x;
-	return c;
-}
-// Complex pointwise multiplication
-static __global__ void ComplexPointwiseMulAndScale(cufftComplex *a, cufftComplex *b, int size, float scale)
-{
-	const int numThreads = blockDim.x * gridDim.x;
-	const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
-	for (int i = threadID; i < size; i += numThreads)
+	int devCount;
+	cudaGetDeviceCount(&devCount);
+	wcout << "CUDA Devices: " << endl << endl;
+
+	for (int i = 0; i < devCount; ++i)
 	{
-		a[i] = ComplexScale(ComplexMul(a[i], b[i]), scale);
+		cudaDeviceProp props;
+		cudaGetDeviceProperties(&props, i);
+		wcout << i << ": " << props.name << ": " << props.major << "." << props.minor << endl;
+		wcout << "  Global memory:   " << props.totalGlobalMem / mb << "mb" << endl;
+		wcout << "  Shared memory:   " << props.sharedMemPerBlock / kb << "kb" << endl;
+		wcout << "  Constant memory: " << props.totalConstMem / kb << "kb" << endl;
+		wcout << "  Block registers: " << props.regsPerBlock << endl << endl;
+
+		wcout << "  Warp size:         " << props.warpSize << endl;
+		wcout << "  Threads per block: " << props.maxThreadsPerBlock << endl;
+		wcout << "  Max block dimensions: [ " << props.maxThreadsDim[0] << ", " << props.maxThreadsDim[1] << ", " << props.maxThreadsDim[2] << " ]" << endl;
+		wcout << "  Max grid dimensions:  [ " << props.maxGridSize[0] << ", " << props.maxGridSize[1] << ", " << props.maxGridSize[2] << " ]" << endl;
+		wcout << "  Concurrent Kernels:		" << props.concurrentKernels;
+
+		wcout << endl;
 	}
 }
 
-// Complex conjugate
-static __global__ inline void ComplexConjugate(cufftComplex * inData, cufftComplex *outData, int size)
+void extract_array(unsigned char* pixels, unsigned int pixels_size, bitmap_image image)
 {
-	const int numThreads = blockDim.x * gridDim.x;
-	const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
-	for (int i = threadID; i < size; i += numThreads) {
-		outData[i].x = inData[i].x;
-		outData[i].y = -1 * inData[i].y;
+	int image_width = image.width();
+	int image_height = image.height();
+
+	pixels = new unsigned char[3 * pixels_size];
+
+	for (int col = 0; col < image_width; col++) {
+		for (int row = 0; row < image_height; row++) {
+			rgb_t colors;
+
+			image.get_pixel(col, row, colors);
+			pixels[(row * image_width + col) * 3 + 0] = colors.red;
+			pixels[(row * image_width + col) * 3 + 1] = colors.green;
+			pixels[(row * image_width + col) * 3 + 2] = colors.blue;
+		}
 	}
+
 }
 
-static __global__ inline void ComplexNormalizeComplexPointwiseMulAndScale(cufftComplex * inData, cufftComplex *outData, int size)
+int get_number_of_occurances(int * arr, unsigned int size)
 {
-	const int numThreads = blockDim.x * gridDim.x;
-	const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
-	for (int i = threadID; i < size; i += numThreads) {
-		outData[i].x = abs(inData[i].x / sqrt(pow(inData[i].x, 2) + pow(inData[i].y, 2)));
-		outData[i].y = abs(inData[i].y / sqrt(pow(inData[i].x, 2) + pow(inData[i].y, 2)));
-	}
-}
-
-int get_number_of_occurances(cufftComplex * arr, unsigned int size)
-{
-	cufftComplex max = arr[0];
+	int min = arr[0];
 	int num_of_occurs = 0;
+	ofstream filemy;
+	filemy.open("output.txt");
 
-	for (unsigned int i = 1; i < size; i++) {
-		if (abs(arr[i].y) > abs(max.y)) {
+	for (unsigned int i = 0; i < size; i++) {
+		filemy << arr[i] << "\n";
+		if (arr[i] < min) {
 			num_of_occurs = 1;
-			max = arr[i];
+			min = arr[i];
 		}
 
-		if (abs(arr[i].y) == abs(max.y))
+		if (arr[i] == min)
 			num_of_occurs++;
 	}
 
-	wcout << "[Found Maximum]: " << max.y << endl;
+	wcout << "[Found Minimum]:  " << min << endl;
 	wcout << "[Number of Occurances]: " << num_of_occurs << endl;
 
 	return num_of_occurs;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Filtering operations - Computing Convolution on the host
-////////////////////////////////////////////////////////////////////////////////
-void Convolve(const Complex *signal, int signal_size,
-	const Complex *filter_kernel, int filter_kernel_size,
-	Complex *filtered_signal)
+bitmap_image rotate_clockwise(bitmap_image image, unsigned int width, unsigned int height)
 {
-	int minRadius = filter_kernel_size / 2;
-	int maxRadius = filter_kernel_size - minRadius;
+	bitmap_image result(height, width);
+	for (unsigned int x = 0; x < width; x++) {
+		for (unsigned int y = 0; y < (height + 1) / 2; y++) {
+			rgb_t pixelColor;
 
-	// Loop over output element indices
-	for (int i = 0; i < signal_size; ++i)
-	{
-		if (i % 1000 == 0)
-			cout << ".";
+			image.get_pixel(x, y, pixelColor);
+			result.set_pixel(y, height - 1 - x, pixelColor.red, pixelColor.green, pixelColor.blue);
 
-		filtered_signal[i].x = filtered_signal[i].y = 0;
+			image.get_pixel(width - 1 - y, x, pixelColor);
+			result.set_pixel(x, y, pixelColor.red, pixelColor.green, pixelColor.blue);
 
-		// Loop over convolution indices
-		for (int j = -maxRadius + 1; j <= minRadius; ++j)
-		{
-			int k = i + j;
+			image.get_pixel(width - 1 - x, width - 1 - y, pixelColor);
+			result.set_pixel(width - 1 - y, x, pixelColor.red, pixelColor.green, pixelColor.blue);
 
-			if (k >= 0 && k < signal_size)
-			{
-				filtered_signal[i] = ComplexAdd(filtered_signal[i], ComplexMul(signal[k], filter_kernel[minRadius - j]));
-			}
+			image.get_pixel(y, width - 1 - x, pixelColor);
+			result.set_pixel(width - 1 - x, height - 1 - y, pixelColor.red, pixelColor.green, pixelColor.blue);
 		}
 	}
+	return result;
 }

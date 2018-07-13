@@ -7,15 +7,20 @@
 \BOOKMARK [2][-]{subsection.1.1.5}{Sequential Similarity Detection Algorithms}{section.1.1}% 7
 \BOOKMARK [1][-]{section.1.2}{Motivation}{chapter.1}% 8
 \BOOKMARK [0][-]{chapter.2}{Problem Definition}{}% 9
-\BOOKMARK [0][-]{chapter.3}{Work Done}{}% 10
-\BOOKMARK [1][-]{section.3.1}{<Section title>}{chapter.3}% 11
-\BOOKMARK [2][-]{subsection.3.1.1}{<Sub-section title>}{section.3.1}% 12
-\BOOKMARK [2][-]{subsection.3.1.2}{<Sub-section title>}{section.3.1}% 13
-\BOOKMARK [2][-]{subsection.3.1.3}{<Sub-section title>}{section.3.1}% 14
-\BOOKMARK [2][-]{subsection.3.1.4}{<Sub-section title>}{section.3.1}% 15
-\BOOKMARK [2][-]{subsection.3.1.5}{<Sub-section title>}{section.3.1}% 16
-\BOOKMARK [1][-]{section.3.2}{<Section title>}{chapter.3}% 17
-\BOOKMARK [0][-]{chapter.4}{Future Work}{}% 18
-\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 19
-\BOOKMARK [0][-]{section*.3}{Acknowledgements}{}% 20
-\BOOKMARK [0][-]{section*.5}{References}{}% 21
+\BOOKMARK [1][-]{section.2.1}{Naive Template Matching}{chapter.2}% 10
+\BOOKMARK [1][-]{section.2.2}{FFT-Based Template Matching}{chapter.2}% 11
+\BOOKMARK [2][-]{subsection.2.2.1}{One-Dimensional Discrete Fourier Transform}{section.2.2}% 12
+\BOOKMARK [2][-]{subsection.2.2.2}{Two-Dimensional Discrete Fourier Transform}{section.2.2}% 13
+\BOOKMARK [2][-]{subsection.2.2.3}{Convolution and Correlation Theorems}{section.2.2}% 14
+\BOOKMARK [0][-]{chapter.3}{Work Done}{}% 15
+\BOOKMARK [1][-]{section.3.1}{<Section title>}{chapter.3}% 16
+\BOOKMARK [2][-]{subsection.3.1.1}{<Sub-section title>}{section.3.1}% 17
+\BOOKMARK [2][-]{subsection.3.1.2}{<Sub-section title>}{section.3.1}% 18
+\BOOKMARK [2][-]{subsection.3.1.3}{<Sub-section title>}{section.3.1}% 19
+\BOOKMARK [2][-]{subsection.3.1.4}{<Sub-section title>}{section.3.1}% 20
+\BOOKMARK [2][-]{subsection.3.1.5}{<Sub-section title>}{section.3.1}% 21
+\BOOKMARK [1][-]{section.3.2}{<Section title>}{chapter.3}% 22
+\BOOKMARK [0][-]{chapter.4}{Future Work}{}% 23
+\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 24
+\BOOKMARK [0][-]{section*.3}{Acknowledgements}{}% 25
+\BOOKMARK [0][-]{section*.5}{References}{}% 26

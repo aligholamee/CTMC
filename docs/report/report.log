@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  13 JUL 2018 11:34
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  13 JUL 2018 13:14
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -238,7 +238,7 @@ LaTeX Info: Redefining \nameref on input line 29.
 \openout3 = `report.out'.
 
  (./title.tex
-<nitc-logo.png, id=88, 268.00125pt x 255.20343pt>
+<nitc-logo.png, id=108, 268.00125pt x 255.20343pt>
 File: nitc-logo.png Graphic file (type png)
  <use nitc-logo.png>
 Package pdftex.def Info: nitc-logo.png used on input line 31.
@@ -283,29 +283,39 @@ l.39
 
 ]) (./prob-definition.tex [2]
 Chapter 2.
-) (./work-done.tex [3
+[3
 
-]
+] [4] <figure_2_1.PNG, id=205, 539.01375pt x 773.89125pt>
+File: figure_2_1.PNG Graphic file (type png)
+
+<use figure_2_1.PNG>
+Package pdftex.def Info: figure_2_1.PNG used on input line 56.
+(pdftex.def)             Requested size: 312.00119pt x 447.95978pt.
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+) (./work-done.tex [5] [6 <./figure_2_1.PNG>]
 Chapter 3.
 
-LaTeX Warning: Citation `citation-2-name-here' on page 4 undefined on input lin
+LaTeX Warning: Citation `citation-2-name-here' on page 7 undefined on input lin
 e 8.
 
-<glider.png, id=161, 216.81pt x 216.81pt>
+<glider.png, id=220, 216.81pt x 216.81pt>
 File: glider.png Graphic file (type png)
  <use glider.png>
 Package pdftex.def Info: glider.png used on input line 17.
 (pdftex.def)             Requested size: 65.04349pt x 65.04349pt.
 ) (./future-work.tex
-[4
+[7
 
  <./glider.png>]
 Chapter 4.
-) (./conclusion.tex [5
+) (./conclusion.tex [8
 
 ]
 Chapter 5.
-) (./acknow.tex [6
+) (./acknow.tex [9
 
 ]
 Underfull \hbox (badness 10000) in paragraph at lines 7--16
@@ -332,12 +342,12 @@ Underfull \hbox (badness 10000) in paragraph at lines 7--16
 
  []
 
-[7
+[10
 
 
 ]) (./ref.tex)
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 51.
- [8
+ [11
 
 
 ]
@@ -346,7 +356,7 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 51.
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 51.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 51.
 Package rerunfilecheck Info: File `report.out' has not changed.
-(rerunfilecheck)             Checksum: 64C5FB57D8A9A64D1F0CA4463C635E7A;1356.
+(rerunfilecheck)             Checksum: 1A3ED553CF5346148302544B135F5DC9;1782.
 
 
 LaTeX Warning: There were undefined references.
@@ -354,22 +364,27 @@ LaTeX Warning: There were undefined references.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 51.
  ) 
 Here is how much of TeX's memory you used:
- 5204 strings out of 492995
- 76964 string characters out of 6136402
- 162674 words of memory out of 5000000
- 8668 multiletter control sequences out of 15000+600000
+ 5235 strings out of 492995
+ 77383 string characters out of 6136402
+ 164870 words of memory out of 5000000
+ 8678 multiletter control sequences out of 15000+600000
  10697 words of font info for 37 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  28i,6n,28p,1352b,348s stack positions out of 5000i,500n,10000p,200000b,80000s
 <c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb><c:/tex
 live/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb><c:/texlive/201
-7/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><c:/texlive/2017/texmf-di
-st/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:/texlive/2017/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmti12.pfb>
-Output written on report.pdf (12 pages, 122767 bytes).
+7/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/texlive/2017/texmf-d
+ist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><c:/texlive/2017/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmmi8.pfb><c:/texlive/2017/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmr12.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfon
+ts/cm/cmr8.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy1
+0.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/
+texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:/texlive/2
+017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
+Output written on report.pdf (15 pages, 603180 bytes).
 PDF statistics:
- 215 PDF objects out of 1000 (max. 8388607)
- 190 compressed objects within 2 object streams
- 41 named destinations out of 1000 (max. 500000)
- 179 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 297 PDF objects out of 1000 (max. 8388607)
+ 260 compressed objects within 3 object streams
+ 60 named destinations out of 1000 (max. 500000)
+ 224 words of extra memory for PDF output out of 10000 (max. 10000000)
 
