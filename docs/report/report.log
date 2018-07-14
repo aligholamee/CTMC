@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  14 JUL 2018 21:02
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  14 JUL 2018 21:22
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -254,7 +254,7 @@ LaTeX Info: Redefining \nameref on input line 29.
 \openout3 = `report.out'.
 
  (./title.tex
-<nitc-logo.png, id=152, 268.00125pt x 255.20343pt>
+<nitc-logo.png, id=156, 268.00125pt x 255.20343pt>
 File: nitc-logo.png Graphic file (type png)
  <use nitc-logo.png>
 Package pdftex.def Info: nitc-logo.png used on input line 31.
@@ -306,7 +306,7 @@ l.39
 Chapter 2.
 [3
 
-] [4] <figure_2_1.PNG, id=274, 539.01375pt x 773.89125pt>
+] [4] <figure_2_1.PNG, id=279, 539.01375pt x 773.89125pt>
 File: figure_2_1.PNG Graphic file (type png)
 
 <use figure_2_1.PNG>
@@ -320,32 +320,32 @@ LaTeX Warning: `!h' float specifier changed to `!ht'.
 Chapter 3.
 [8
 
-] <grid_block.PNG, id=306, 896.59969pt x 178.41656pt>
+] <grid_block.PNG, id=311, 896.59969pt x 178.41656pt>
 File: grid_block.PNG Graphic file (type png)
  <use grid_block.PNG>
 Package pdftex.def Info: grid_block.PNG used on input line 29.
 (pdftex.def)             Requested size: 234.00238pt x 46.56416pt.
 
-[9] <occupancy_analysis.PNG, id=314, 1238.37656pt x 620.3175pt>
+[9] <occupancy_analysis.PNG, id=319, 1238.37656pt x 620.3175pt>
 File: occupancy_analysis.PNG Graphic file (type png)
 
 <use occupancy_analysis.PNG>
 Package pdftex.def Info: occupancy_analysis.PNG used on input line 39.
 (pdftex.def)             Requested size: 386.10214pt x 193.40387pt.
- [10 <./grid_block.PNG> <./occupancy_analysis.PNG>] <sm_activity.PNG, id=322, 1
+ [10 <./grid_block.PNG> <./occupancy_analysis.PNG>] <sm_activity.PNG, id=327, 1
 293.33188pt x 637.63219pt>
 File: sm_activity.PNG Graphic file (type png)
  <use sm_activity.PNG>
 Package pdftex.def Info: sm_activity.PNG used on input line 48.
 (pdftex.def)             Requested size: 386.10214pt x 190.34737pt.
 
-[11 <./sm_activity.PNG>] [12] <speedup.PNG, id=337, 1285.05093pt x 222.8325pt>
+[11 <./sm_activity.PNG>] [12] <speedup.PNG, id=342, 1285.05093pt x 222.8325pt>
 File: speedup.PNG Graphic file (type png)
 
 <use speedup.PNG>
 Package pdftex.def Info: speedup.PNG used on input line 80.
 (pdftex.def)             Requested size: 386.10214pt x 66.95227pt.
- <intensity.PNG, id=339, 1298.60156pt x 564.60938pt>
+ <intensity.PNG, id=344, 1298.60156pt x 564.60938pt>
 File: intensity.PNG Graphic file (type png)
 
 <use intensity.PNG>
@@ -354,7 +354,14 @@ Package pdftex.def Info: intensity.PNG used on input line 92.
  [13 <./speedup.PNG>] [14 <./intensity.PNG>] [15])
 (./future-work.tex [16]
 Chapter 4.
-) (./conclusion.tex [17
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 4.
+(c:/texlive/2017/texmf-dist/tex/latex/base/omscmr.fd
+File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
+)
+LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 4.
+) (./conclusion.tex
+[17
 
 ]
 Chapter 5.
@@ -382,25 +389,19 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 50.
  (./report.aux)
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 50.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 50.
+Package rerunfilecheck Info: File `report.out' has not changed.
+(rerunfilecheck)             Checksum: BD48A15F8811B4B402F507FA4891F2E8;2801.
 
-
-Package rerunfilecheck Warning: File `report.out' has changed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `report.out':
-(rerunfilecheck)             Before: AD779A7FD388B6A1AAD0F3C64F3BD6D8;2754
-(rerunfilecheck)             After:  BD48A15F8811B4B402F507FA4891F2E8;2801.
 
 LaTeX Warning: There were multiply-defined labels.
 
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 50.
  ) 
 Here is how much of TeX's memory you used:
- 5313 strings out of 492995
- 78576 string characters out of 6136402
+ 5333 strings out of 492995
+ 78885 string characters out of 6136402
  165893 words of memory out of 5000000
- 8708 multiletter control sequences out of 15000+600000
+ 8723 multiletter control sequences out of 15000+600000
  10697 words of font info for 37 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  28i,6n,28p,1352b,348s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -415,10 +416,10 @@ pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/t
 exlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/texlive/201
 7/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:/texlive/2017/texmf-d
 ist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
-Output written on report.pdf (24 pages, 843923 bytes).
+Output written on report.pdf (24 pages, 845512 bytes).
 PDF statistics:
- 449 PDF objects out of 1000 (max. 8388607)
- 393 compressed objects within 4 object streams
- 107 named destinations out of 1000 (max. 500000)
- 332 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 458 PDF objects out of 1000 (max. 8388607)
+ 401 compressed objects within 5 object streams
+ 109 named destinations out of 1000 (max. 500000)
+ 340 words of extra memory for PDF output out of 10000 (max. 10000000)
 
