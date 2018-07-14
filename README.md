@@ -4,4 +4,4 @@
 </p>
 
 ---
-In most computer vision and image analysis problems, it is necessary to define a similarity measure between two or more different objects or images. Template matching is a classic and fundamental method used to score similarities between objects using certain mathematical algorithms. In this project, we'll propose two implementations of image template matching in CUDA. Our first method is based on the version of the template matching and the second method is based on the fast Fourier transform algorithm.
+In most computer vision and image analysis problems, it is necessary to define a similarity measure between two or more different objects or images. Template matching is a classic and fundamental method used to score similarities between objects using certain mathematical algorithms. In this project, we'll propose two implementations of image template matching in CUDA. Our first method is based on the naive version of the template matching and the second method is based on the fast Fourier transform algorithm.
