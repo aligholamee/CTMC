@@ -1,2 +1,2 @@
 # CTMC
-Parallelized Image Template Matching with CUDA.
+Implementation and optimization of image template matching with CUDA.
