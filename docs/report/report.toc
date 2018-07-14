@@ -31,7 +31,15 @@
 \contentsline {subsubsection}{IPW Chart}{12}{section*.9}
 \contentsline {subsection}{\numberline {3.1.8}Speedup Analysis}{12}{subsection.3.1.8}
 \contentsline {subsection}{\numberline {3.1.9}Performance Analysis}{13}{subsection.3.1.9}
-\contentsline {chapter}{\numberline {4}Future Work}{15}{chapter.4}
-\contentsline {chapter}{\numberline {5}Conclusion}{16}{chapter.5}
-\contentsline {chapter}{Acknowledgements}{17}{section*.10}
-\contentsline {chapter}{References}{18}{section*.12}
+\contentsline {section}{\numberline {3.2}Implementation of FFT Based Template Matching}{14}{section.3.2}
+\contentsline {subsection}{\numberline {3.2.1}Real to Complex Conversion}{15}{subsection.3.2.1}
+\contentsline {subsection}{\numberline {3.2.2}Padding Data}{15}{subsection.3.2.2}
+\contentsline {subsection}{\numberline {3.2.3}2-D FFT Planning}{15}{subsection.3.2.3}
+\contentsline {subsection}{\numberline {3.2.4}Forward FFT Launch}{15}{subsection.3.2.4}
+\contentsline {subsection}{\numberline {3.2.5}Complex Conjugate Kernel}{16}{subsection.3.2.5}
+\contentsline {subsection}{\numberline {3.2.6}Complex Point-wise Kernel}{16}{subsection.3.2.6}
+\contentsline {subsection}{\numberline {3.2.7}Inverse FFT Launch}{16}{subsection.3.2.7}
+\contentsline {subsection}{\numberline {3.2.8}Get Maximum and Number of Occurrences}{16}{subsection.3.2.8}
+\contentsline {chapter}{\numberline {4}Future Work}{17}{chapter.4}
+\contentsline {chapter}{\numberline {5}Conclusion}{18}{chapter.5}
+\contentsline {chapter}{References}{19}{section*.10}

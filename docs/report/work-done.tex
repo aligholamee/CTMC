@@ -94,3 +94,35 @@ and denotes the number of operations per byte of memory traffic. When the work i
 	\label{pl1}
 \end{figure}
 It is given that the \textit{single precision} processing power of a \textit{Nvidia 850m GTX} is 1155 GFLOPS \cite{techpower}. Given these results, the kernel is actually memory bound since $0.5 < 1155 / 32 = 36$. The kernel arithmetic intensity should be at least 36 to be considered a compute bound kernel.
+
+\section{Implementation of FFT Based Template Matching}
+In this section, we delve into the details of \textit{FFT} based template matching using \textit{cufft} library from \textit{Nvidia}. Note that this implementation is still in progress and there are multiple serial loops conducted in preprocessing step which slows down the process compared to the \textit{naive template matching} procedure.
+As mentioned before, the overall procedure is to convert the spatial domain of input images to the frequency domain. In the frequency domain, we can apply a correlation based operation. This operation yields a signal of the same size as main image size. We then apply an inverse Fourier transform to turn the results back to the spatial domain. We then find the maximum of that signal and the number of occurrences of that maximum value in that signal. The procedure is well defined below\cite{gonzalez}:
+\begin{equation}
+	c = real(IFFT_{2D} (FFT_{2D}(main\_image) .* FFT_{2D}(template\_image)))
+\end{equation}	
+according to 3.6, $c$ contains a list of values which we are desired to find the maximum of it (for maximum similarity). To obtain this in CUDA, we've used multiple functions which are described further. Note that \textit{*} symbol shows the complex conjugate of the second signal.
+
+\subsection{Real to Complex Conversion}
+For this part, we have not focused on the performance. We use simple \textit{for} loops to convert the image data matrix to the proper format of \textit{cufft} library which is called \textit{cufftComplex}. \textit{cufftComplex} is a simple typedef of \textit{float} type in C.
+
+\subsection{Padding Data}
+Before performing a \textit{2-D Forward Fourier Transform} we are urged to perform a data padding on template signal to make it the same size as the main signal. Figure 2.1 illustrates this phenomenon pretty well. The duty of data padding is simple. Allocate new memory with a new size. Copy signals into their corresponding location in new allocated memory and set other places to 0.
+
+\subsection{2-D FFT Planning}
+\textit{cufft} library uses the concept of \textit{plan} to provide the baseline setup for the main APIs provided in the library. A plan can initiate a 1-D, 2-D or 3-D data processing API from \textit{cufft} library. In this implementation, we need a setup for a 2 dimensional Fourier transform, thus we use \textit{cufftPlan2d} to prepare the library for the main transformations.
+
+\subsection{Forward FFT Launch}
+In order to launch a forward \textit{complex to complex} Fourier transform using \textit{cufft}, we'll use \textit{cufftExecC2C}. The constant \textit{CUFFT\_FORWARD} shows the direction of the Fourier transform which is \textit{Forward} in this case.
+
+\subsection{Complex Conjugate Kernel}
+This kernel implements the conjugation procedure. The implementation is pretty straightforward. Each thread multiples the corresponding signal point's complex part to -1 and loads it back to the input signal.
+
+\subsection{Complex Point-wise Kernel}
+This kernel provides a point to point multiplication manner for each of the points in main and template input signals. It uses another kernel called \textit{ComplexMul} to perform a \textit{complex multiplication}. It then scales the result using \textit{ComplexScale}. Scaling or normalization is mainly done by dividing the signal values to the size of the signal.
+
+\subsection{Inverse FFT Launch}
+Finally, we'll perform an inverse Fourier transform on the result of the \textit{Complex Point-wise Kernel}. The resulting signal is in the spatial domain.
+
+\subsection{Get Maximum and Number of Occurrences}
+To find the number of occurrences, we \textit{serially} iterate over the resulting signal of the previous section. Note that these steps are not \textit{100\%} efficient and are still in improvement.
