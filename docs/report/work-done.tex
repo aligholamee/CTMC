@@ -81,3 +81,16 @@ since the size of input is constant in this law, we'll assume that 3.3 is correc
 	\caption{Computation and data transfer time for naive serial and parallel implementation.}
 	\label{pl1}
 \end{figure}
+
+\subsection{Performance Analysis}
+In this section, we'll analyze the performance of the \textit{Compute Sad Array Kernel}. Firstly, lets find the arithmetic intensity of this kernel. Arithmetic intensity $I$, also called \textit{operational intensity}, is the ratio of \textit{arithmetic operations} or \textit{work} ($W$), to the \textit{memory traffic} ($Q$) \cite{roofline}:
+\begin{equation}
+	I = \frac{W}{Q}
+\end{equation}
+and denotes the number of operations per byte of memory traffic. When the work is represented as \textit{FLOPS}, the arithmetic intensity will be \textit{FLOPS/Byte}. According to the \textit{Naive Roofline Model}, the \textit{attainable performance} is bound either by the \textit{peak performance} or \textit{memory bandwidth * arithmetic intensity}. In this case, the operational intensity can be obtained by following the memory access patterns and the work being done in the main kernel:
+\begin{figure}[!h]\centering
+	\includegraphics[width=1\textwidth]{intensity.PNG}
+	\caption{Calculation of first kernel operational intensity and GPU memory bandwidth.}
+	\label{pl1}
+\end{figure}
+It is given that the \textit{single precision} processing power of a \textit{Nvidia 850m GTX} is 1155 GFLOPS \cite{techpower}. Given these results, the kernel is actually memory bound since $0.5 < 1155 / 32 = 36$. The kernel arithmetic intensity should be at least 36 to be considered a compute bound kernel.

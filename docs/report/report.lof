@@ -5,5 +5,6 @@
 \contentsline {figure}{\numberline {3.1}{\ignorespaces Illustration of varying the size of blocks, registers and shared memory on the achieved occupancy.}}{10}{figure.3.1}
 \contentsline {figure}{\numberline {3.2}{\ignorespaces Issue efficiency and SM activity charts for the first (bottleneck) kernel.}}{11}{figure.3.2}
 \contentsline {figure}{\numberline {3.3}{\ignorespaces Computation and data transfer time for naive serial and parallel implementation.}}{13}{figure.3.3}
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Calculation of first kernel operational intensity and GPU memory bandwidth.}}{14}{figure.3.4}
 \addvspace {10\p@ }
 \addvspace {10\p@ }
