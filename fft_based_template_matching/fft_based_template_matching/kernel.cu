@@ -24,6 +24,7 @@ using namespace std;
 typedef float2 Complex;
 
 int initiate_parallel_template_matching(bitmap_image, bitmap_image);
+bitmap_image rotate_clockwise(bitmap_image, unsigned int, unsigned int);
 static __device__ __host__ inline Complex ComplexAdd(Complex, Complex);
 static __device__ __host__ inline Complex ComplexScale(Complex, float);
 static __device__ __host__ inline Complex ComplexMul(Complex, Complex);
@@ -383,4 +384,28 @@ void Convolve(const Complex *signal, int signal_size,
 			}
 		}
 	}
+}
+
+
+bitmap_image rotate_clockwise(bitmap_image image, unsigned int width, unsigned int height)
+{
+	bitmap_image result(height, width);
+	for (unsigned int x = 0; x < width; x++) {
+		for (unsigned int y = 0; y < (height + 1) / 2; y++) {
+			rgb_t pixelColor;
+
+			image.get_pixel(x, y, pixelColor);
+			result.set_pixel(y, height - 1 - x, pixelColor.red, pixelColor.green, pixelColor.blue);
+
+			image.get_pixel(width - 1 - y, x, pixelColor);
+			result.set_pixel(x, y, pixelColor.red, pixelColor.green, pixelColor.blue);
+
+			image.get_pixel(width - 1 - x, width - 1 - y, pixelColor);
+			result.set_pixel(width - 1 - y, x, pixelColor.red, pixelColor.green, pixelColor.blue);
+
+			image.get_pixel(y, width - 1 - x, pixelColor);
+			result.set_pixel(width - 1 - x, height - 1 - y, pixelColor.red, pixelColor.green, pixelColor.blue);
+		}
+	}
+	return result;
 }
