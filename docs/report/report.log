@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  14 JUL 2018 21:22
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2018.6.27)  14 JUL 2018 21:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -389,9 +389,15 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 50.
  (./report.aux)
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 50.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 50.
-Package rerunfilecheck Info: File `report.out' has not changed.
-(rerunfilecheck)             Checksum: BD48A15F8811B4B402F507FA4891F2E8;2801.
 
+
+Package rerunfilecheck Warning: File `report.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `report.out':
+(rerunfilecheck)             Before: BD48A15F8811B4B402F507FA4891F2E8;2801
+(rerunfilecheck)             After:  817017B61519891FEBA214285AC57742;2803.
 
 LaTeX Warning: There were multiply-defined labels.
 
@@ -416,7 +422,7 @@ pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/t
 exlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/texlive/201
 7/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:/texlive/2017/texmf-d
 ist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
-Output written on report.pdf (24 pages, 845512 bytes).
+Output written on report.pdf (24 pages, 845480 bytes).
 PDF statistics:
  458 PDF objects out of 1000 (max. 8388607)
  401 compressed objects within 5 object streams
