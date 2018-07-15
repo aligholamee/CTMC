@@ -1,0 +1,30 @@
+﻿  Compiling CUDA source file kernel.cu...
+  
+  C:\Users\Ali Gholami\Source\Repos\CTMC\fft_based_template_matching\fft_based_template_matching>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\bin\nvcc.exe" -gencode=arch=compute_30,code=\"sm_30,compute_30\" --use-local-env --cl-version 2017 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\bin\HostX86\x64" -x cu  -I"C:\bitmap-master" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v9.1\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile -cudart static  -g   -DWIN32 -DWIN64 -D_DEBUG -D_CONSOLE -D_MBCS -Xcompiler "/EHsc /W3 /nologo /Od /FS /Zi /RTC1 /MDd " -o x64\Debug\kernel.cu.obj "C:\Users\Ali Gholami\Source\Repos\CTMC\fft_based_template_matching\fft_based_template_matching\kernel.cu" 
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(32): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(33): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(337): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(347): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(347): warning : function "ComplexNormalizeComplexPointwiseMulAndScale" was declared but never referenced
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(337): warning : function "ComplexConjugate" was declared but never referenced
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(32): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(33): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(337): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(347): warning : inline qualifier ignored for "__global__" function
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(347): warning : function "ComplexNormalizeComplexPointwiseMulAndScale" was declared but never referenced
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(337): warning : function "ComplexConjugate" was declared but never referenced
+  kernel.cu
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(118): warning C4244: '=': conversion from 'double' to 'unsigned char', possible loss of data
+C:/Users/Ali Gholami/Source/Repos/CTMC/fft_based_template_matching/fft_based_template_matching/kernel.cu(128): warning C4244: '=': conversion from 'double' to 'unsigned char', possible loss of data
+C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\xutility(2350): warning C4996: 'std::copy::_Unchecked_iterators::_Deprecate': Call to 'std::copy' with parameters that may be unsafe - this call relies on the caller to check that the passed values are correct. To disable this warning, use -D_SCL_SECURE_NO_WARNINGS. See documentation on how to use Visual C++ 'Checked Iterators'
+  C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Tools\MSVC\14.10.25017\include\xutility(2350): note: see declaration of 'std::copy::_Unchecked_iterators::_Deprecate'
+  C:\bitmap-master\bitmap_image.hpp(242): note: see reference to function template instantiation '_OutIt *std::copy<const unsigned char*,unsigned char*>(_InIt,_InIt,_OutIt)' being compiled
+          with
+          [
+              _OutIt=unsigned char *,
+              _InIt=const unsigned char *
+          ]
+kernel.cu.obj : error LNK2019: unresolved external symbol cufftPlan2d referenced in function "int __cdecl initiate_parallel_template_matching(class bitmap_image,class bitmap_image)" (?initiate_parallel_template_matching@@YAHVbitmap_image@@0@Z)
+kernel.cu.obj : error LNK2019: unresolved external symbol cufftExecC2C referenced in function "int __cdecl initiate_parallel_template_matching(class bitmap_image,class bitmap_image)" (?initiate_parallel_template_matching@@YAHVbitmap_image@@0@Z)
+kernel.cu.obj : error LNK2019: unresolved external symbol cufftDestroy referenced in function "int __cdecl initiate_parallel_template_matching(class bitmap_image,class bitmap_image)" (?initiate_parallel_template_matching@@YAHVbitmap_image@@0@Z)
+C:\Users\Ali Gholami\Source\Repos\CTMC\fft_based_template_matching\x64\Debug\fft_based_template_matching.exe : fatal error LNK1120: 3 unresolved externals

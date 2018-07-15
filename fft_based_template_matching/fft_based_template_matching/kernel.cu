@@ -80,7 +80,7 @@ int get_number_of_occurances(cufftComplex * arr, unsigned int size);
 
 int main()
 {
-	bitmap_image main_image("Input Files/collection_coin.bmp");
+	bitmap_image main_image("Input Files/collection.bmp");
 	bitmap_image template_image("Input Files/collection_coin.bmp");
 
 	initiate_parallel_template_matching(main_image, template_image);
@@ -99,6 +99,10 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	int template_height = template_image.height();
 	int template_size = template_width * template_height;
 
+	// CUDA time handling
+	cudaEvent_t start;
+	cudaEvent_t stop;
+	float elapsed_time = 0.0f;
 
 	unsigned char* h_main_image = new unsigned char[main_size];
 
@@ -185,6 +189,10 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	// Multiply the coefficients together and normalize the result
 	printf("Launching ComplexPointwiseMulAndScale<<< >>>\n");
 
+	errorHandler(cudaEventCreate(&start));
+	errorHandler(cudaEventCreate(&stop));
+	errorHandler(cudaEventRecord(start));
+
 	ComplexPointwiseMulAndScale << <gridDimensions, blockDimensions >> >((cufftComplex *)d_main_signal_out, (cufftComplex *)d_template_signal_out, NEW_SIZE, 1.0f / NEW_SIZE);
 	cout << "Successfully completed complex pointwise mul and scale" << endl;
 	errorHandler(cudaGetLastError());
@@ -224,8 +232,19 @@ int	initiate_parallel_template_matching(bitmap_image main_image, bitmap_image te
 	printf("\nvalue of TestResult %d\n", bTestResult);
 
 	*/
-	get_number_of_occurances(h_correlation_signal, NEW_SIZE);
+	int h_num_occurances = get_number_of_occurances(h_correlation_signal, NEW_SIZE);
 
+	errorHandler(cudaEventRecord(stop, NULL));
+	errorHandler(cudaEventSynchronize(stop));
+	errorHandler(cudaEventElapsedTime(&elapsed_time, start, stop));
+
+	// Print the results
+	wcout << "[[[ Parallel Computation Results ]]] " << endl << endl;
+	wcout << "Elapsed time in msec = " << (int)(elapsed_time) << endl;
+	wcout << "[Main Image Dimensions]: " << main_width << "*" << main_height << endl;
+	wcout << "[Template Image Dimensions]: " << template_width << "*" << template_height << endl;
+	// get_number_of_occurances(h_mse_array, mse_array_size);
+	wcout << "[Number of Occurances]: " << h_num_occurances << endl;
 
 	// Cancel plans :))))
 	cufftDestroy(plan_main);

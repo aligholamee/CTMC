@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\kernel.cu">
+      <Filter>Source Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\ntm.cu">
+      <Filter>Source Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\utils.cu">
+      <Filter>Source Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\includes\kernel.cuh" />
+    <None Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\includes\ntm.cuh" />
+    <None Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\includes\utils.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\CMakeFiles\bitmap_image.hpp.dir\$(Configuration)\bitmap_image.hpp_generated_kernel.cu.obj">
+      <Filter>Object Files</Filter>
+    </Object>
+    <Object Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\CMakeFiles\bitmap_image.hpp.dir\$(Configuration)\bitmap_image.hpp_generated_ntm.cu.obj">
+      <Filter>Object Files</Filter>
+    </Object>
+    <Object Include="C:\Users\Ali Gholami\Desktop\Fast Naive Template Matching\CMakeFiles\bitmap_image.hpp.dir\$(Configuration)\bitmap_image.hpp_generated_utils.cu.obj">
+      <Filter>Object Files</Filter>
+    </Object>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Object Files">
+      <UniqueIdentifier>{ECCF257B-3131-3D91-8D5E-D37DEC3BC65A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{6CE39C11-560E-3F7D-90C1-B78E25797EA1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

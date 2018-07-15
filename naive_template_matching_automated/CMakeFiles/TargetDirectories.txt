@@ -1,0 +1,3 @@
+C:/Users/Ali Gholami/Desktop/Fast Naive Template Matching/CMakeFiles/bitmap_image.hpp.dir
+C:/Users/Ali Gholami/Desktop/Fast Naive Template Matching/CMakeFiles/ALL_BUILD.dir
+C:/Users/Ali Gholami/Desktop/Fast Naive Template Matching/CMakeFiles/ZERO_CHECK.dir

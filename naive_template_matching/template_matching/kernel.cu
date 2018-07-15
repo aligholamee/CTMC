@@ -2,8 +2,8 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <math.h>
-#include <chrono>
-#include <math_functions.h>
+// #include <chrono>
+// #include <math_functions.h>
 #include <bitmap_image.hpp>
 
 #define errorHandler(stmt)																					\
@@ -25,7 +25,7 @@ int initiate_parallel_template_matching(bitmap_image, bitmap_image);
 void initiate_serial_template_matching(bitmap_image, bitmap_image);
 void device_query();
 void extract_array(unsigned char*, unsigned int, bitmap_image);
-bitmap_image rotate_clockwise(bitmap_image image, unsigned int width, unsigned int height);
+bitmap_image rotate_ninty_anticlockwise(bitmap_image image, unsigned int width, unsigned int height);
 int get_number_of_occurances(int * arr, unsigned int size);
 
 /*
@@ -143,19 +143,22 @@ findNumberofOccurances(int* mse_array, int* min_mse, int* mutex, int* num_occura
 		atomicExch(mutex, 0);
 	}
 }
-int main()
+
+int main(int argc, char* argv[])
 {
-	bitmap_image main_image("Input Files/collection.bmp");
-	bitmap_image template_image("Input Files/collection_coin.bmp");
-	bitmap_image rotated_template;
-	rotated_template = rotate_clockwise(template_image, template_image.width(), template_image.height());
 
-	initiate_parallel_template_matching(main_image, template_image);
-	// initiate_parallel_template_matching(main_image, rotated_template);
+	// Parse args
+	for (int count = 0; count < argc; count += 2) {
+		
+		bitmap_image main_image(argv[count]);
+		bitmap_image template_image(argv[count + 1]);
 
-	wcout << "\n ------- ******************* ------- \n";
-	// initiate_serial_template_matching(main_image, template_image);
-	// device_query();
+		// Initiate template matching
+		initiate_parallel_template_matching(main_image, template_image);
+	}
+
+	// bitmap_image rotated_template;
+	// rotated_template = rotate_clockwise(template_image, template_image.width(), template_image.height());
 	system("pause");
 	return 0;
 }
@@ -427,7 +430,7 @@ int get_number_of_occurances(int * arr, unsigned int size)
 	return num_of_occurs;
 }
 
-bitmap_image rotate_clockwise(bitmap_image image, unsigned int width, unsigned int height)
+bitmap_image rotate_ninty_anticlockwise(bitmap_image image, unsigned int width, unsigned int height)
 {
 	bitmap_image result(height, width);
 	for (unsigned int x = 0; x < width; x++) {
